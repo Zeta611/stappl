@@ -17,8 +17,8 @@
                   ("in", IN);
                   ("sample", SAMPLE);
                   ("observe", OBSERVE);
-                   ] 
-} 
+                   ]
+}
 
 let blank = [' ' '\t' '\n' '\r']+
 let id = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*

@@ -1,7 +1,5 @@
-%{       
-
+%{
 open Program
-
 %}
 
 %token <int> NUM
