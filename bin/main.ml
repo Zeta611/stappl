@@ -1,0 +1,28 @@
+open Project
+open Program
+
+let src = ref ""
+let opt_pp = ref false
+
+let lexbuf_contents lb =
+  let open Lexing in
+  let pos = lb.lex_curr_pos in
+  let len = lb.lex_buffer_len - lb.lex_curr_pos in
+  (Bytes.to_string (Bytes.sub lb.lex_buffer pos len))
+
+let main () = 
+  Arg.parse
+    [ ("-pp", Arg.Unit (fun _ -> opt_pp := true), "print pgm")]
+    (fun x -> src := x)
+    ("Usage : " ^ (Filename.basename Sys.argv.(0)) ^ " [-option] [filename] ");
+  if !opt_pp then (
+    let lexbuf = Lexing.from_channel (if !src = "" then stdin else open_in !src) in
+    try (let pgm = (Parser.program Lexer.start lexbuf) in 
+	  let _ = print_endline "=== Printing Input Program ===" in
+	  pp pgm
+    ) with Parsing.Parse_error -> print_endline ("Parsing Error: " ^ (lexbuf_contents lexbuf))
+  ) 
+  else
+    print_endline "Please provide one of options! (-pp)"
+  
+let _ = main ()
