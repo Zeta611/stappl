@@ -5,15 +5,16 @@ open Program
 %token <int> INT
 %token <float> REAL
 %token <string> ID
-%token IF LET FUN IN SAMPLE OBSERVE PLUS MINUS MULT DIV EQ NOTEQ LESS GREAT AND OR NOT
-%token LSQUARE RSQUARE COMMA LBRACKET RBRACKET COLON SEMICOLON THEN ELSE 
+%token IF LET FUN IN SAMPLE OBSERVE PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NOTEQ LESS GREAT AND OR NOT
+%token LSQUARE RSQUARE COMMA LBRACKET RBRACKET COLON SEMICOLON THEN ELSE
 %token LPAREN RPAREN EOF
 
 %nonassoc IN
 %left SEMICOLON
 %nonassoc ELSE EQ NOTEQ LESS GREAT
-%left PLUS MINUS AND OR
-%right MULT DIV NOT
+%left PLUS MINUS AND OR RPLUS RMINUS
+%right MULT DIV RMULT RDIV NOT
+%left NEG RNEG
 
 %start program
 %type <Program.program> program
@@ -36,9 +37,13 @@ exp:
 	| SAMPLE LPAREN exp RPAREN { SAMPLE $3 }
 	| OBSERVE LPAREN exp COMMA exp RPAREN { OBSERVE ($3, $5) }
 	| exp PLUS exp { ADD ($1, $3) }
+	| exp RPLUS exp { RADD ($1, $3) }
 	| exp MINUS exp { MINUS ($1, $3) }
+	| exp RMINUS exp { RMINUS ($1, $3) }
 	| exp MULT exp { MULT ($1, $3) }
+	| exp RMULT exp { RMULT ($1, $3) }
 	| exp DIV exp { DIV ($1, $3) }
+	| exp RDIV exp { RDIV ($1, $3) }
 	| exp EQ exp { EQ ($1, $3) }
 	| exp NOTEQ exp { NOTEQ ($1, $3) }
 	| exp LESS exp { LESS ($1, $3) }
@@ -49,6 +54,8 @@ exp:
 	| NOT exp { NOT $2 }
 	| LSQUARE explist RSQUARE { LIST $2 }
 	| LBRACKET reclist RBRACKET { RECORD $2 }
+	| NEG exp { NEG $2 }
+  	| RNEG exp { RNEG $2 }
 	;
 
 idlist: { [] }
