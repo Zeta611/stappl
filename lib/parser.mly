@@ -9,6 +9,7 @@ open Program
 %token LPAREN RPAREN EOF
 
 %nonassoc IN
+%left SEMICOLON
 %nonassoc ELSE EQ NOTEQ LESS GREAT
 %left PLUS MINUS AND OR
 %right MULT DIV NOT
