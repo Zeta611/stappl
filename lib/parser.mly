@@ -13,7 +13,6 @@ open Program
 %nonassoc ELSE EQ NOTEQ LESS GREAT
 %left PLUS MINUS AND OR
 %right MULT DIV NOT
-%nonassoc SAMPLE OBSERVE
 
 %start program
 %type <Program.program> program
@@ -26,13 +25,14 @@ program:
   ;
 
 exp:
+  | LPAREN exp RPAREN { $2 }
 	| NUM { CONST $1 }
 	| ID { VAR $1 }
 	| ID LPAREN arglist RPAREN { CALL ($1, $3) }
 	| IF exp THEN exp ELSE exp { IF ($2, $4, $6) }
 	| LET ID EQ exp IN exp { ASSIGN ($2, $4, $6) }
-	| SAMPLE exp { SAMPLE $2 }
-	| OBSERVE exp exp { OBSERVE ($2, $3) }
+	| SAMPLE LPAREN exp RPAREN { SAMPLE $3 }
+	| OBSERVE LPAREN exp COMMA exp RPAREN { OBSERVE ($3, $5) }
 	| exp PLUS exp { ADD ($1, $3) }
 	| exp MINUS exp { MINUS ($1, $3) }
 	| exp MULT exp { MULT ($1, $3) }
