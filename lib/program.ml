@@ -14,6 +14,7 @@ type exp =
   | LESS of exp * exp
   | AND of exp * exp
   | OR of exp * exp
+  | SEQ of exp * exp
   | NOT of exp
   | LIST of exp list
   | RECORD of (exp * exp) list

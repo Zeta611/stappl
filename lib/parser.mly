@@ -42,6 +42,7 @@ exp:
 	| exp GREAT exp { LESS ($3, $1) }
 	| exp AND exp { AND ($1, $3) }
 	| exp OR exp { OR ($1, $3) }
+	| exp SEMICOLON exp { SEQ ($1, $3) }
 	| NOT exp { NOT $2 }
 	| LSQUARE explist RSQUARE { LIST $2 }
 	| LBRACKET reclist RBRACKET { RECORD $2 }
