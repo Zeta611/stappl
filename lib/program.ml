@@ -10,6 +10,8 @@ type exp =
   | RADD of exp * exp
   | MINUS of exp * exp
   | RMINUS of exp * exp
+  | NEG of exp
+  | RNEG of exp
   | MULT of exp * exp
   | RMULT of exp * exp
   | DIV of exp * exp
