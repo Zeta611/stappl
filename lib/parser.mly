@@ -2,7 +2,8 @@
 open Program
 %}
 
-%token <int> NUM
+%token <int> INT
+%token <float> REAL
 %token <string> ID
 %token IF LET FUN IN SAMPLE OBSERVE PLUS MINUS MULT DIV EQ NOTEQ LESS GREAT AND OR NOT
 %token LSQUARE RSQUARE COMMA LBRACKET RBRACKET COLON SEMICOLON THEN ELSE 
@@ -26,7 +27,8 @@ program:
 
 exp:
   | LPAREN exp RPAREN { $2 }
-	| NUM { CONST $1 }
+	| INT { INT $1 }
+	| REAL { REAL $1 }
 	| ID { VAR $1 }
 	| ID LPAREN arglist RPAREN { CALL ($1, $3) }
 	| IF exp THEN exp ELSE exp { IF ($2, $4, $6) }

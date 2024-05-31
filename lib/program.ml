@@ -3,7 +3,8 @@ open Core
 type id = string [@@deriving sexp]
 
 type exp =
-  | CONST of int
+  | INT of int
+  | REAL of float
   | VAR of id
   | ADD of exp * exp
   | MINUS of exp * exp

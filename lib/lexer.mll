@@ -35,12 +35,17 @@ let _ =
 
 let blank = [' ' '\t' '\n' '\r']+
 let id = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
-let number = ['0'-'9']+
+
+let digit = ['0'-'9']
+let int = digit+
+let pow = ['e' 'E']['+' '-']?int
+let real = ((int '.'? | (digit* '.' int)))pow?
 let newline = ['\n' '\r']+
 
 rule start = parse
       | blank { start lexbuf }
-      | number as num { NUM (int_of_string (verbose1 num)) }
+      | int as i { INT (int_of_string (verbose1 i)) }
+      | real as r { REAL (float_of_string (verbose1 r)) }
       | id as s { let id = verbose1 (String.lowercase_ascii s) in
                try Hashtbl.find keyword_tbl id
                with Not_found -> ID id
