@@ -52,14 +52,17 @@ idlist: { [] }
 	;
 
 arglist: { [] }
+  | exp { [$1] }
 	| exp COMMA arglist { $1 :: $3 }
 	;
 
 explist: { [] }
+  | exp { [$1] }
 	| exp COMMA explist { $1 :: $3 }
 	;
 
 reclist: { [] }
+  | exp COLON exp { [($1, $3)] }
 	| exp COLON exp COMMA reclist { ($1, $3) :: $5 }
 	;
 %%
