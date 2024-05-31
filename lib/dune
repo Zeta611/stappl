@@ -1,7 +1,9 @@
 (library
  (name project)
  (flags -w -8)
- (libraries str))
+ (libraries str core)
+ (preprocess
+   (pps ppx_jane)))
 
 (ocamllex lexer)
 (menhir

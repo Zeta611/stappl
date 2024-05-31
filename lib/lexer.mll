@@ -1,23 +1,36 @@
 {
- open Parser
- exception Eof
- exception LexicalError
- let verbose1 s =  (print_string s; print_newline()); s
- let verbose2 s =  (print_string s; print_newline()); ()
+open Parser
 
- (* let verbose1 s =  s
- let verbose2 s =  () *)
- let keyword_tbl = Hashtbl.create 31
- let _ = List.iter (fun (keyword, tok) -> Hashtbl.add keyword_tbl keyword tok)
-                   [
-                  ("if", IF);
-                  ("then", THEN);
-                  ("else", ELSE);
-                  ("let", LET);
-                  ("in", IN);
-                  ("sample", SAMPLE);
-                  ("observe", OBSERVE);
-                   ]
+exception Eof
+exception LexicalError
+
+let verbose1 s =
+  print_string s;
+  print_newline ();
+  s
+
+let verbose2 s =
+  print_string s;
+  print_newline ();
+  ()
+
+(* let verbose1 s =  s
+   let verbose2 s =  () *)
+let keyword_tbl = Hashtbl.create 31
+
+let _ =
+  List.iter
+    (fun (keyword, tok) -> Hashtbl.add keyword_tbl keyword tok)
+    [
+      ("if", IF);
+      ("then", THEN);
+      ("else", ELSE);
+      ("let", LET);
+      ("fun", FUN);
+      ("in", IN);
+      ("sample", SAMPLE);
+      ("observe", OBSERVE);
+    ]
 }
 
 let blank = [' ' '\t' '\n' '\r']+

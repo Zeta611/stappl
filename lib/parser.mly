@@ -4,13 +4,15 @@ open Program
 
 %token <int> NUM
 %token <string> ID
-%token IF LET IN SAMPLE OBSERVE PLUS MINUS MULT DIV EQ NOTEQ LESS GREAT AND OR NOT
+%token IF LET FUN IN SAMPLE OBSERVE PLUS MINUS MULT DIV EQ NOTEQ LESS GREAT AND OR NOT
 %token LSQUARE RSQUARE COMMA LBRACKET RBRACKET COLON SEMICOLON THEN ELSE 
 %token LPAREN RPAREN EOF
 
+%nonassoc IN
 %nonassoc ELSE EQ NOTEQ LESS GREAT
 %left PLUS MINUS AND OR
 %right MULT DIV NOT
+%nonassoc SAMPLE OBSERVE
 
 %start program
 %type <Program.program> program
@@ -18,9 +20,9 @@ open Program
 %%
 
 program:
-	| LET ID idlist EQ exp SEMICOLON program EOF { FUNC ($2, $3, $5, $7) }
-	| exp EOF { EXP $1 }
-    ;
+  | FUN ID idlist EQ exp SEMICOLON program { let {funs; exp} = $7 in {funs = ($2, $3, $5) :: funs; exp} }
+  | exp EOF { { funs = []; exp = $1 } }
+  ;
 
 exp:
 	| NUM { CONST $1 }
