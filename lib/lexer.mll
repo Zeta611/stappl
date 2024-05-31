@@ -55,8 +55,8 @@ rule start = parse
       | "+." {verbose2 "+."; RPLUS}
       | "-" {verbose2 "-"; MINUS}
       | "-." {verbose2 "-."; RMINUS}
-      | "~" {verbose2 "~"; NEG}
-      | "~." {verbose2 "-."; RNEG}
+      | "~-" {verbose2 "~"; NEG}
+      | "~-." {verbose2 "-."; RNEG}
       | "*" {verbose2 "*"; MULT}
       | "*." {verbose2 "*."; RMULT}
       | "/" { verbose2 "/"; DIV}
