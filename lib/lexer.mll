@@ -52,9 +52,13 @@ rule start = parse
             }
       | "#" {verbose2 "#"; comment lexbuf }
       | "+" {verbose2 "+"; PLUS}
+      | "+." {verbose2 "+."; RPLUS}
       | "-" {verbose2 "-"; MINUS}
+      | "-." {verbose2 "-."; RMINUS}
       | "*" {verbose2 "*"; MULT}
+      | "*." {verbose2 "*."; RMULT}
       | "/" { verbose2 "/"; DIV}
+      | "/." { verbose2 "/."; RDIV}
       | "=" { verbose2 "="; EQ}
       | "!=" { verbose2 "!="; NOTEQ}
       | "<" { verbose2 "<"; LESS}

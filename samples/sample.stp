@@ -1,5 +1,5 @@
 let z = sample(bernoulli(0.5)) in
-let mu = (if (z = 0) then (0.0-1.0) else 1.0) in
+let mu = (if (z = 0) then (0.0-.1.0) else 1.0) in
 let d = normal(mu, 1.0) in
 let y = 0.5 in
 observe(d, y); z

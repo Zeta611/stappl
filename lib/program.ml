@@ -7,9 +7,13 @@ type exp =
   | REAL of float
   | VAR of id
   | ADD of exp * exp
+  | RADD of exp * exp
   | MINUS of exp * exp
+  | RMINUS of exp * exp
   | MULT of exp * exp
+  | RMULT of exp * exp
   | DIV of exp * exp
+  | RDIV of exp * exp
   | EQ of exp * exp
   | NOTEQ of exp * exp
   | LESS of exp * exp
