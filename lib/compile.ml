@@ -12,7 +12,7 @@ module Env = struct
 end
 
 module Pred = struct
-  type t
+  type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
 end
 
 module Dist = struct
@@ -139,4 +139,19 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
             obs_map = Map.empty (module Id);
           },
         Det_exp.Var v )
+  | Assign (x, e, body) ->
+      let g1, det_exp1 = compile env pred e in
+      let sub_body = sub body x det_exp1 in
+      let g2, det_exp2 = compile env pred sub_body in
+      let g = Graph.union g1 g2 in
+      (g, det_exp2)
+  | If (e_pred, e_con, e_alt) ->
+      let g1, det_exp_pred = compile env pred e_pred in
+      let pred_true = Pred.And (det_exp_pred, pred) in
+      let pred_false = Pred.And_not (det_exp_pred, pred) in
+      let g2, det_exp_con = compile env pred_true e_con in
+      let g3, det_exp_alt = compile env pred_false e_alt in
+      let g = Graph.union g1 (Graph.union g2 g3) in
+      (g, Det_exp.If (det_exp_pred, det_exp_con, det_exp_alt))
+
   | _ -> failwith "Not implemented"
