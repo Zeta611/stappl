@@ -8,4 +8,4 @@ val add_exn :
   fn:Program.fn ->
   (string, Program.fn, Base.String.comparator_witness) Base.Map.t
 
-val find_exn : t -> name:string -> Program.fn
+val find : t -> name:string -> Program.fn option

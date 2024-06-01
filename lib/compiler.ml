@@ -15,7 +15,6 @@ let gen_vertex =
 
 let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   let sub' exp = sub exp x det_exp in
-  Printf.printf "factorial %s\n" x;
   match exp with
   | Int n -> Int n
   | Real r -> Real r
@@ -57,8 +56,7 @@ let gather_functions (prog : program) : Env.t =
 
 exception Not_closed_observation
 
-let compile''' (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t
-    =
+let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
   let rec compile pred =
     let compile' e = compile pred e in
     let open Graph in
@@ -114,21 +112,29 @@ let compile''' (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t
         let g3, det_exp_alt = compile pred_false e_alt in
         let g = g1 @+ g2 @+ g3 in
         (g, Det_exp.If (det_exp_pred, det_exp_con, det_exp_alt))
-    | Call (c, params) ->
-        let f = Env.find_exn env ~name:c in
-        let g, det_exps =
-          List.fold_map params ~init:Graph.empty ~f:(fun g e ->
-              let g', de = compile' e in
-              (g @+ g', de))
-        in
-        let { params; body; _ } = f in
-        let param_det_pairs = List.zip_exn params det_exps in
-        let sub_body =
-          List.fold param_det_pairs ~init:body
-            ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
-        in
-        let g_body, det_exp_body = compile' sub_body in
-        (g @+ g_body, det_exp_body)
+    | Call (c, params) -> (
+        match Env.find env ~name:c with
+        | Some f ->
+            let g, det_exps =
+              List.fold_map params ~init:Graph.empty ~f:(fun g e ->
+                  let g', de = compile' e in
+                  (g @+ g', de))
+            in
+            let { params; body; _ } = f in
+            let param_det_pairs = List.zip_exn params det_exps in
+            let sub_body =
+              List.fold param_det_pairs ~init:body
+                ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
+            in
+            let g_body, det_exp_body = compile' sub_body in
+            (g @+ g_body, det_exp_body)
+        | None ->
+            let g, det_exps =
+              List.fold_map params ~init:Graph.empty ~f:(fun g e ->
+                  let g', de = compile' e in
+                  (g @+ g', de))
+            in
+            (g, Prim_call (c, det_exps)))
     | Add (e1, e2) ->
         let g1, de1 = compile' e1 in
         let g2, de2 = compile' e2 in

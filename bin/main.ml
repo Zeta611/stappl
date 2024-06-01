@@ -21,14 +21,12 @@ let () =
     in
     try
       let pgm = Parser.program Lexer.start lexbuf in
-      let _ = print_endline "=== Printing Input Program ===" in
+      print_endline "=== Printing Input Program ===";
       pp pgm;
-      let _ = print_endline "=== Gathering Functions ===" in
       let open Compiler in
       let env = gather_functions pgm in
-      let _ = print_endline "=== Compiling Output Program ===" in
-      let graph, _de = compile''' env Pred.Empty pgm.exp in
-      let _ = print_endline "=== Printing Output Program ===" in
+      let graph, _de = compile env Pred.Empty pgm.exp in
+      print_endline "=== Printing Output Program ===";
       Printf.printf "%s" (Graph.pp graph)
     with Parsing.Parse_error ->
       print_endline ("Parsing Error: " ^ lexbuf_contents lexbuf)
