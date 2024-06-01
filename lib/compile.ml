@@ -85,4 +85,6 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
   ignore pred;
   match exp with
   | Int n -> (Graph.empty, Det_exp.Int n)
+  | Real r -> (Graph.empty, Det_exp.Real r)
+  | Var x -> (Graph.empty, Det_exp.Var x)
   | _ -> failwith "Not implemented"
