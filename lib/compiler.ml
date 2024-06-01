@@ -18,7 +18,7 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   match exp with
   | Int n -> Int n
   | Real r -> Real r
-  | Var y when Id.(x = y) -> Det_exp.to_exp det_exp
+  | Var y when Id.(x = y) -> Exp.of_det_exp det_exp
   | Var y -> Var y
   | Add (e1, e2) -> Add (sub' e1, sub' e2)
   | Radd (e1, e2) -> Radd (sub' e1, sub' e2)
