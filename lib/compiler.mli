@@ -5,4 +5,4 @@ val gather_functions : Program.program -> Env.t
 
 exception Not_closed_observation
 
-val compile : Env.t -> Pred.t -> Program.Exp.t -> Graph.t * Program.Det_exp.t
+val compile''' : Env.t -> Pred.t -> Program.Exp.t -> Graph.t * Program.Det_exp.t
