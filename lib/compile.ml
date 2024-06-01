@@ -15,10 +15,31 @@ module Pred = struct
   type t
 end
 
+module Dist = struct
+  type t
+
+  type exp =
+    | If of Det_exp.t * exp * exp
+    | Dist_obj of { dist : t; var : Id.t; args : Det_exp.t list }
+
+  exception Score_invalid_arguments
+
+  let prim_to_dist : Id.t -> t = failwith "Not implemented"
+
+  let rec score (det_exp : Det_exp.t) (var : Id.t) =
+    match det_exp with
+    | If (e_pred, e_con, e_alt) ->
+        let s_con = score e_con var in
+        let s_alt = score e_alt var in
+        If (e_pred, s_con, s_alt)
+    | Prim_call (c, es) -> Dist_obj { dist = prim_to_dist c; var; args = es }
+    | _ -> raise Score_invalid_arguments
+end
+
 module Graph = struct
   type vertex = Id.t
   type arc = vertex * vertex
-  type det_map = (Id.t, Det_exp.t, Id.comparator_witness) Map.t
+  type det_map = (Id.t, Dist.exp, Id.comparator_witness) Map.t
   type obs_map = (Id.t, number, Id.comparator_witness) Map.t
 
   type t = {
@@ -35,21 +56,22 @@ module Graph = struct
       det_map = Map.empty (module Id);
       obs_map = Map.empty (module Id);
     }
-  
-  let union g1 g2 = 
+
+  let union g1 g2 =
     {
       vertices = g1.vertices @ g2.vertices;
       arcs = g1.arcs @ g2.arcs;
-      det_map = Map.merge g1.det_map g2.det_map ~f:(fun ~key:_ v -> 
-        match v with
-        | `Left det | `Right det -> Some det
-        | `Both _ -> failwith "Graph.union: duplicate deterministic expression"
-      );
-      obs_map = Map.merge g1.obs_map g2.obs_map ~f:(fun ~key:_ v -> 
-        match v with
-        | `Left obs | `Right obs -> Some obs
-        | `Both _ -> failwith "Graph.union: duplicate observation"
-      );
+      det_map =
+        Map.merge g1.det_map g2.det_map ~f:(fun ~key:_ v ->
+            match v with
+            | `Left det | `Right det -> Some det
+            | `Both _ ->
+                failwith "Graph.union: duplicate deterministic expression");
+      obs_map =
+        Map.merge g1.obs_map g2.obs_map ~f:(fun ~key:_ v ->
+            match v with
+            | `Left obs | `Right obs -> Some obs
+            | `Both _ -> failwith "Graph.union: duplicate observation");
     }
 end
 
@@ -96,11 +118,25 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   | Sample e -> Sample (sub' e)
   | Observe (e1, e2) -> Observe (sub' e1, sub' e2)
 
-let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
+let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
+    Graph.t * Det_exp.t =
   ignore env;
   ignore pred;
   match exp with
   | Int n -> (Graph.empty, Det_exp.Int n)
   | Real r -> (Graph.empty, Det_exp.Real r)
   | Var x -> (Graph.empty, Det_exp.Var x)
+  | Sample e ->
+      let g, de = compile env pred e in
+      let v = gen_sym () in
+      let de_fvs = Det_exp.fv de in
+      let f = Dist.score de v in
+      ( Graph.union g
+          {
+            vertices = [ v ];
+            arcs = List.map (Set.to_list de_fvs) ~f:(fun fv -> (fv, v));
+            det_map = Map.singleton (module Id) v f;
+            obs_map = Map.empty (module Id);
+          },
+        Det_exp.Var v )
   | _ -> failwith "Not implemented"
