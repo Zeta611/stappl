@@ -22,7 +22,9 @@ open Program
 %%
 
 program:
-  | FUN ID idlist EQ exp SEMICOLON program { let {funs; exp} = $7 in {funs = ($2, $3, $5) :: funs; exp} }
+  | FUN ID idlist EQ exp SEMICOLON program {
+    let {funs; exp} = $7 in {funs = { name = $2; params = $3; body = $5 } :: funs; exp}
+  }
   | exp EOF { { funs = []; exp = $1 } }
   ;
 

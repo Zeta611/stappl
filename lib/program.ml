@@ -32,6 +32,7 @@ type exp =
   | OBSERVE of exp * exp
 [@@deriving sexp]
 
-type program = { funs : (id * id list * exp) list; exp : exp } [@@deriving sexp]
+type fn = { name : id; params : id list; body : exp } [@@deriving sexp]
+type program = { funs : fn list; exp : exp } [@@deriving sexp]
 
 let pp pgm = print_endline (sexp_of_program pgm |> Sexp.to_string_hum)
