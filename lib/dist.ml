@@ -1,7 +1,7 @@
 open Core
 open Program
 
-type t [@@deriving sexp]
+type t = string [@@deriving sexp]
 type one = One [@@deriving sexp]
 
 type exp =
@@ -12,7 +12,7 @@ type exp =
 
 exception Score_invalid_arguments
 
-let prim_to_dist : Id.t -> t = failwith "Not implemented"
+let prim_to_dist : Id.t -> t = function a -> a
 
 let rec score (det_exp : Det_exp.t) (var : Id.t) =
   match det_exp with

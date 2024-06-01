@@ -15,6 +15,7 @@ let gen_vertex =
 
 let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   let sub' exp = sub exp x det_exp in
+  Printf.printf "factorial %s\n" x;
   match exp with
   | Int n -> Int n
   | Real r -> Real r
@@ -49,6 +50,10 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   | Call (f, es) -> Call (f, List.map es ~f:sub')
   | Sample e -> Sample (sub' e)
   | Observe (e1, e2) -> Observe (sub' e1, sub' e2)
+
+let gather_functions (prog : program) : Env.t =
+  List.fold prog.funs ~init:Env.empty ~f:(fun env f ->
+      Env.add_exn env ~name:f.name ~fn:f)
 
 exception Not_closed_observation
 
