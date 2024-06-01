@@ -1,14 +1,13 @@
 {
+open Core
 open Lexing
 open Parser
 
 exception SyntaxError of string
 
-let keyword_tbl = Hashtbl.create 31
-
-let () =
-  List.iter
-    (fun (keyword, tok) -> Hashtbl.add keyword_tbl keyword tok)
+let keywords =
+  Hashtbl.of_alist_exn
+    (module String)
     [
       ("if", IF);
       ("then", THEN);
@@ -36,7 +35,7 @@ rule read =
   | newline   { new_line lexbuf; read lexbuf }
   | int as i  { INT (int_of_string i) }
   | real as r { REAL (float_of_string r) }
-  | id as s   { try Hashtbl.find keyword_tbl s with Not_found -> ID s }
+  | id as s   { match Hashtbl.find keywords s with Some s -> s | None -> ID s }
   | '#'       { comment lexbuf }
   | '+'       { PLUS }
   | "+."      { RPLUS }
