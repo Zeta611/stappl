@@ -75,6 +75,8 @@ module Graph = struct
     }
 end
 
+let ( @+ ) = Graph.union
+
 let gen_sym =
   let cnt = ref 0 in
   fun () ->
@@ -131,19 +133,19 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
       let v = gen_sym () in
       let de_fvs = Det_exp.fv de in
       let f = Dist.score de v in
-      ( Graph.union g
-          {
-            vertices = [ v ];
-            arcs = List.map (Set.to_list de_fvs) ~f:(fun fv -> (fv, v));
-            det_map = Map.singleton (module Id) v f;
-            obs_map = Map.empty (module Id);
-          },
+      ( g
+        @+ {
+             vertices = [ v ];
+             arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
+             det_map = Map.singleton (module Id) v f;
+             obs_map = Map.empty (module Id);
+           },
         Det_exp.Var v )
   | Assign (x, e, body) ->
       let g1, det_exp1 = compile env pred e in
       let sub_body = sub body x det_exp1 in
       let g2, det_exp2 = compile env pred sub_body in
-      let g = Graph.union g1 g2 in
+      let g = g1 @+ g2 in
       (g, det_exp2)
   | If (e_pred, e_con, e_alt) ->
       let g1, det_exp_pred = compile env pred e_pred in
@@ -151,7 +153,6 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
       let pred_false = Pred.And_not (det_exp_pred, pred) in
       let g2, det_exp_con = compile env pred_true e_con in
       let g3, det_exp_alt = compile env pred_false e_alt in
-      let g = Graph.union g1 (Graph.union g2 g3) in
+      let g = g1 @+ g2 @+ g3 in
       (g, Det_exp.If (det_exp_pred, det_exp_con, det_exp_alt))
-
   | _ -> failwith "Not implemented"
