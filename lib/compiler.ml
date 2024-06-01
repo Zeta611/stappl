@@ -88,7 +88,6 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
         let fvs = Set.union (Det_exp.fv de1) (Pred.fv pred) in
         if not @@ Set.is_empty (Det_exp.fv de2) then
           raise Not_closed_observation;
-
         let g' =
           {
             vertices = [ v ];
