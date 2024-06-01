@@ -26,7 +26,7 @@ module Det_exp = struct
     | Record of (t * t) list
     | If of t * t * t
     | Prim_call of Id.t * t list
-  [@@deriving sexp, stable_variant]
+  [@@deriving sexp, variants, stable_variant]
 
   let rec fv : t -> (Id.t, Id.comparator_witness) Set.t = function
     | Int _ | Real _ -> Set.empty (module Id)
@@ -92,6 +92,7 @@ module Exp = struct
     | Observe of t * t
   [@@deriving
     sexp,
+      variants,
       stable_variant ~version:Det_exp.t
         ~remove:[ Call; Seq; Assign; Sample; Observe ]
         ~add:[ Prim_call ]]
