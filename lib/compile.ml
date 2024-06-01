@@ -2,7 +2,7 @@ open Core
 open Program
 
 module Env = struct
-  type t = (Id.t, fn, Id.comparator_witness) Map.t
+  type t = fn Map.M(Id).t
 
   let empty : t = Map.empty (module Id)
   let add (env : t) ~(name : Id.t) ~(fn : fn) = Map.add env ~key:name ~data:fn
@@ -11,6 +11,7 @@ end
 
 module Pred = struct
   type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
+  [@@deriving sexp]
 
   let rec fv : t -> Set.M(Id).t = function
     | Empty -> Set.empty (module Id)
@@ -18,13 +19,14 @@ module Pred = struct
 end
 
 module Dist = struct
-  type t
-  type one = One
+  type t [@@deriving sexp]
+  type one = One [@@deriving sexp]
 
   type exp =
     | If_de of Det_exp.t * exp * exp
     | If_pred of Pred.t * exp * one
     | Dist_obj of { dist : t; var : Id.t; args : Det_exp.t list }
+  [@@deriving sexp]
 
   exception Score_invalid_arguments
 
@@ -41,10 +43,10 @@ module Dist = struct
 end
 
 module Graph = struct
-  type vertex = Id.t
-  type arc = vertex * vertex
-  type det_map = (Id.t, Dist.exp, Id.comparator_witness) Map.t
-  type obs_map = (Id.t, Det_exp.t, Id.comparator_witness) Map.t
+  type vertex = Id.t [@@deriving sexp]
+  type arc = vertex * vertex [@@deriving sexp]
+  type det_map = Dist.exp Map.M(Id).t [@@deriving sexp]
+  type obs_map = Det_exp.t Map.M(Id).t [@@deriving sexp]
 
   type t = {
     vertices : vertex list;
@@ -52,6 +54,7 @@ module Graph = struct
     det_map : det_map;
     obs_map : obs_map;
   }
+  [@@deriving sexp]
 
   let empty =
     {
@@ -77,6 +80,8 @@ module Graph = struct
             | `Left obs | `Right obs -> Some obs
             | `Both _ -> failwith "Graph.union: duplicate observation");
     }
+
+  let pp (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum
 end
 
 let ( @+ ) = Graph.union
@@ -267,7 +272,7 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
     | Not e ->
         let g, de = compile' e in
         (g, Det_exp.Not de)
-    | Exp.List es ->
+    | List es ->
         let g, des =
           List.fold_map es ~init:Graph.empty ~f:(fun g e ->
               let g', de = compile' e in
