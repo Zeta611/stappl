@@ -1,91 +1,6 @@
 open Core
 open Program
 
-module Env = struct
-  type t = fn Map.M(Id).t
-
-  let empty : t = Map.empty (module Id)
-  let add (env : t) ~(name : Id.t) ~(fn : fn) = Map.add env ~key:name ~data:fn
-  let find_exn (env : t) ~(name : Id.t) : fn = Map.find_exn env name
-end
-
-module Pred = struct
-  type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
-  [@@deriving sexp]
-
-  let rec fv : t -> Set.M(Id).t = function
-    | Empty -> Set.empty (module Id)
-    | And (de, p) | And_not (de, p) -> Set.union (Det_exp.fv de) (fv p)
-end
-
-module Dist = struct
-  type t [@@deriving sexp]
-  type one = One [@@deriving sexp]
-
-  type exp =
-    | If_de of Det_exp.t * exp * exp
-    | If_pred of Pred.t * exp * one
-    | Dist_obj of { dist : t; var : Id.t; args : Det_exp.t list }
-  [@@deriving sexp]
-
-  exception Score_invalid_arguments
-
-  let prim_to_dist : Id.t -> t = failwith "Not implemented"
-
-  let rec score (det_exp : Det_exp.t) (var : Id.t) =
-    match det_exp with
-    | If (e_pred, e_con, e_alt) ->
-        let s_con = score e_con var in
-        let s_alt = score e_alt var in
-        If_de (e_pred, s_con, s_alt)
-    | Prim_call (c, es) -> Dist_obj { dist = prim_to_dist c; var; args = es }
-    | _ -> raise Score_invalid_arguments
-end
-
-module Graph = struct
-  type vertex = Id.t [@@deriving sexp]
-  type arc = vertex * vertex [@@deriving sexp]
-  type det_map = Dist.exp Map.M(Id).t [@@deriving sexp]
-  type obs_map = Det_exp.t Map.M(Id).t [@@deriving sexp]
-
-  type t = {
-    vertices : vertex list;
-    arcs : arc list;
-    det_map : det_map;
-    obs_map : obs_map;
-  }
-  [@@deriving sexp]
-
-  let empty =
-    {
-      vertices = [];
-      arcs = [];
-      det_map = Map.empty (module Id);
-      obs_map = Map.empty (module Id);
-    }
-
-  let union g1 g2 =
-    {
-      vertices = g1.vertices @ g2.vertices;
-      arcs = g1.arcs @ g2.arcs;
-      det_map =
-        Map.merge g1.det_map g2.det_map ~f:(fun ~key:_ v ->
-            match v with
-            | `Left det | `Right det -> Some det
-            | `Both _ ->
-                failwith "Graph.union: duplicate deterministic expression");
-      obs_map =
-        Map.merge g1.obs_map g2.obs_map ~f:(fun ~key:_ v ->
-            match v with
-            | `Left obs | `Right obs -> Some obs
-            | `Both _ -> failwith "Graph.union: duplicate observation");
-    }
-
-  let pp (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum
-end
-
-let ( @+ ) = Graph.union
-
 let gen_sym =
   let cnt = ref 0 in
   fun () ->
@@ -140,6 +55,7 @@ exception Not_closed_observation
 let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
   let rec compile pred =
     let compile' = compile pred in
+    let open Graph in
     function
     | Exp.Int n -> (Graph.empty, Det_exp.Int n)
     | Real r -> (Graph.empty, Det_exp.Real r)
@@ -149,14 +65,14 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
         let v = gen_vertex () in
         let de_fvs = Det_exp.fv de in
         let f = Dist.score de v in
+
         let g' =
-          Graph.
-            {
-              vertices = [ v ];
-              arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
-              det_map = Map.singleton (module Id) v f;
-              obs_map = Map.empty (module Id);
-            }
+          {
+            vertices = [ v ];
+            arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
+            det_map = Map.singleton (module Id) v f;
+            obs_map = Map.empty (module Id);
+          }
         in
         (g @+ g', Det_exp.Var v)
     | Observe (e1, e2) ->
@@ -168,14 +84,14 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
         let fvs = Set.union (Det_exp.fv de1) (Pred.fv pred) in
         if not @@ Set.is_empty (Det_exp.fv de2) then
           raise Not_closed_observation;
+
         let g' =
-          Graph.
-            {
-              vertices = [ v ];
-              arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-              det_map = Map.singleton (module Id) v f;
-              obs_map = Map.singleton (module Id) v de2;
-            }
+          {
+            vertices = [ v ];
+            arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
+            det_map = Map.singleton (module Id) v f;
+            obs_map = Map.singleton (module Id) v de2;
+          }
         in
         (g1 @+ g2 @+ g', de2)
     | Assign (x, e, body) ->
