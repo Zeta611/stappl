@@ -1,13 +1,11 @@
 {
-open Core
 open Lexing
 open Parser
 
 exception SyntaxError of string
 
 let keywords =
-  Hashtbl.of_alist_exn
-    (module String)
+  String_dict.of_alist_exn
     [
       ("if", IF);
       ("then", THEN);
@@ -35,7 +33,7 @@ rule read =
   | newline   { new_line lexbuf; read lexbuf }
   | int as i  { INT (int_of_string i) }
   | real as r { REAL (float_of_string r) }
-  | id as s   { match Hashtbl.find keywords s with Some s -> s | None -> ID s }
+  | id as s   { match String_dict.find keywords s with Some s -> s | None -> ID s }
   | '#'       { comment lexbuf }
   | '+'       { PLUS }
   | "+."      { RPLUS }

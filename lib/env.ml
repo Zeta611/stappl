@@ -1,9 +1,9 @@
 open Core
 open Program
 
-type t = fn Map.M(Id).t
+type t = fn Id.Map.t
 
-let empty : t = Map.empty (module Id)
+let empty : t = Id.Map.empty
 
 let add_exn (env : t) ~(name : Id.t) ~(fn : fn) =
   Map.add_exn env ~key:name ~data:fn

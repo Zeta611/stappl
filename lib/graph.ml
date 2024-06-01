@@ -3,8 +3,8 @@ open Program
 
 type vertex = Id.t [@@deriving sexp]
 type arc = vertex * vertex [@@deriving sexp]
-type det_map = Dist.exp Map.M(Id).t [@@deriving sexp]
-type obs_map = Det_exp.t Map.M(Id).t [@@deriving sexp]
+type det_map = Dist.exp Id.Map.t [@@deriving sexp]
+type obs_map = Det_exp.t Id.Map.t [@@deriving sexp]
 
 type t = {
   vertices : vertex list;
@@ -15,12 +15,7 @@ type t = {
 [@@deriving sexp]
 
 let empty =
-  {
-    vertices = [];
-    arcs = [];
-    det_map = Map.empty (module Id);
-    obs_map = Map.empty (module Id);
-  }
+  { vertices = []; arcs = []; det_map = Id.Map.empty; obs_map = Id.Map.empty }
 
 let union g1 g2 =
   {

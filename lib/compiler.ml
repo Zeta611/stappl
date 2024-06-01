@@ -75,8 +75,8 @@ let compile (program : program) : Graph.t * Det_exp.t =
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
-            det_map = Map.singleton (module Id) v f;
-            obs_map = Map.empty (module Id);
+            det_map = Id.Map.singleton v f;
+            obs_map = Id.Map.empty;
           }
         in
         (g @+ g', Det_exp.Var v)
@@ -93,8 +93,8 @@ let compile (program : program) : Graph.t * Det_exp.t =
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-            det_map = Map.singleton (module Id) v f;
-            obs_map = Map.singleton (module Id) v de2;
+            det_map = Id.Map.singleton v f;
+            obs_map = Id.Map.singleton v de2;
           }
         in
         (g1 @+ g2 @+ g', de2)
