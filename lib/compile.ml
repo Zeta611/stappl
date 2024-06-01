@@ -187,4 +187,19 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
       let g3, det_exp_alt = compile env pred_false e_alt in
       let g = g1 @+ g2 @+ g3 in
       (g, Det_exp.If (det_exp_pred, det_exp_con, det_exp_alt))
+  | Call (c, params) ->
+      let f = Env.find_exn env ~name:c in
+      let g, det_exps =
+        List.fold_map params ~init:Graph.empty ~f:(fun g e ->
+            let g', de = compile env pred e in
+            (g @+ g', de))
+      in
+      let { params; body; _ } = f in
+      let param_det_pairs = List.zip_exn params det_exps in
+      let sub_body =
+        List.fold param_det_pairs ~init:body
+          ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
+      in
+      let g_body, det_exp_body = compile env pred sub_body in
+      (g @+ g_body, det_exp_body)
   | _ -> failwith "Not implemented"
