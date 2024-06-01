@@ -9,10 +9,24 @@
 (source
  (github shapespeare/stappl))
 
-(authors "Dohyung Kim")
+(authors
+  "Dohyung Kim"
+  "Jaeho Lee"
+  "Hyeonseo Yang")
 
-(maintainers "Dohyung Kim")
+(maintainers
+  "Dohyung Kim"
+  "Jaeho Lee"
+  "Hyeonseo Yang")
 
+(package
+ (name stappl)
+ (synopsis "Statically typed probabilistic programming language")
+ (description "STAPPL is a statically typed probabilistic programming language")
+ (depends
+  (core (>= 0.16.2))
+  (ppx_jane (>= 0.16.0))
+  (menhir (>= 20231231))))
 ;(map_workspace_root false)
 
 (license MIT)
