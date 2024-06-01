@@ -1,4 +1,4 @@
-open Core
+open! Core
 open Program
 
 type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
@@ -7,6 +7,6 @@ type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
 let ( &&& ) p de = And (de, p)
 let ( &&! ) p de = And_not (de, p)
 
-let rec fv : t -> Set.M(Id).t = function
-  | Empty -> Set.empty (module Id)
-  | And (de, p) | And_not (de, p) -> Set.union (Det_exp.fv de) (fv p)
+let rec fv : t -> Id.Set.t = function
+  | Empty -> Id.Set.empty
+  | And (de, p) | And_not (de, p) -> Id.(Det_exp.fv de @| fv p)

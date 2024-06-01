@@ -1,4 +1,4 @@
-open Core
+open! Core
 open Program
 
 let gen_sym =
@@ -71,7 +71,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
     let c2 e1 e2 ctor =
       let g1, de1 = compile' e1 in
       let g2, de2 = compile' e2 in
-      Graph.(g1 @+ g2, ctor de1 de2)
+      Graph.(g1 @| g2, ctor de1 de2)
     in
 
     let open Det_exp in
@@ -93,14 +93,14 @@ let compile (program : program) : Graph.t * Det_exp.t =
             obs_map = Id.Map.empty;
           }
         in
-        (g @+ g', Var v)
+        (g @| g', Var v)
     | Observe (e1, e2) ->
         let g1, de1 = compile' e1 in
         let g2, de2 = compile' e2 in
         let v = gen_vertex () in
         let f1 = Dist.score de1 v in
         let f = Dist.(If_pred (pred, f1, One)) in
-        let fvs = Set.union (fv de1) (Pred.fv pred) in
+        let fvs = Id.(fv de1 @| Pred.fv pred) in
         if Core.not @@ Set.is_empty (fv de2) then raise Not_closed_observation;
         let g' =
           {
@@ -110,23 +110,23 @@ let compile (program : program) : Graph.t * Det_exp.t =
             obs_map = Id.Map.singleton v de2;
           }
         in
-        (g1 @+ g2 @+ g', de2)
+        (g1 @| g2 @| g', de2)
     | Assign (x, e, body) ->
         let g1, det_exp1 = compile' e in
         let sub_body = sub body x det_exp1 in
         let g2, det_exp2 = compile' sub_body in
-        (g1 @+ g2, det_exp2)
+        (g1 @| g2, det_exp2)
     | If (e_pred, e_con, e_alt) ->
         let g1, det_exp_pred = compile' e_pred in
         let open Pred in
         let g2, det_exp_con = compile (pred &&& det_exp_pred) e_con in
         let g3, det_exp_alt = compile (pred &&! det_exp_pred) e_alt in
-        (g1 @+ g2 @+ g3, If (det_exp_pred, det_exp_con, det_exp_alt))
+        (g1 @| g2 @| g3, If (det_exp_pred, det_exp_con, det_exp_alt))
     | Call (c, params) -> (
         let g, det_exps =
           List.fold_map params ~init:Graph.empty ~f:(fun g e ->
               let g', de = compile' e in
-              (g @+ g', de))
+              (g @| g', de))
         in
         match Env.find env ~name:c with
         | Some f ->
@@ -137,7 +137,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
                 ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
             in
             let g_body, det_exp_body = compile' sub_body in
-            (g @+ g_body, det_exp_body)
+            (g @| g_body, det_exp_body)
         | None -> (g, Prim_call (c, det_exps)))
     | Add (e1, e2) -> c2 e1 e2 add
     | Radd (e1, e2) -> c2 e1 e2 radd
@@ -160,7 +160,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
         let g, des =
           List.fold_map es ~init:Graph.empty ~f:(fun g e ->
               let g', de = compile' e in
-              (g @+ g', de))
+              (g @| g', de))
         in
         (g, List des)
     | Record fields ->
@@ -168,7 +168,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
           List.fold_map fields ~init:Graph.empty ~f:(fun g (k, v) ->
               let g_k, de_k = compile' k in
               let g_v, de_v = compile' v in
-              (g @+ g_k @+ g_v, (de_k, de_v)))
+              (g @| g_k @| g_v, (de_k, de_v)))
         in
         (g, Record des)
   in

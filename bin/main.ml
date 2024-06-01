@@ -1,4 +1,4 @@
-open Core
+open! Core
 open Stappl
 
 let print_position (outx : Out_channel.t) (lexbuf : Lexing.lexbuf) : unit =

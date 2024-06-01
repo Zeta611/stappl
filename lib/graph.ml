@@ -1,4 +1,4 @@
-open Core
+open! Core
 open Program
 
 type vertex = Id.t [@@deriving sexp]
@@ -34,5 +34,5 @@ let union g1 g2 =
           | `Both _ -> failwith "Graph.union: duplicate observation");
   }
 
-let ( @+ ) = union
+let ( @| ) = union
 let pretty (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum

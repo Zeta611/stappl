@@ -1,5 +1,10 @@
-open Core
-module Id = String
+open! Core
+
+module Id = struct
+  let ( @| ) = Set.union
+
+  include String
+end
 
 module Det_exp = struct
   type t =
@@ -28,9 +33,11 @@ module Det_exp = struct
     | Prim_call of Id.t * t list
   [@@deriving sexp, variants, stable_variant]
 
-  let rec fv : t -> (Id.t, Id.comparator_witness) Set.t = function
-    | Int _ | Real _ -> Set.empty (module Id)
-    | Var x -> Set.singleton (module Id) x
+  let rec fv : t -> Id.Set.t =
+    let open Id in
+    function
+    | Int _ | Real _ -> Id.Set.empty
+    | Var x -> Id.Set.singleton x
     | Add (e1, e2)
     | Radd (e1, e2)
     | Minus (e1, e2)
@@ -44,21 +51,15 @@ module Det_exp = struct
     | Less (e1, e2)
     | And (e1, e2)
     | Or (e1, e2) ->
-        Set.union (fv e1) (fv e2)
+        fv e1 @| fv e2
     | Neg e | Rneg e | Not e -> fv e
-    | List es ->
-        List.fold es
-          ~init:(Set.empty (module Id))
-          ~f:(fun acc e -> Set.union acc (fv e))
+    | List es -> List.fold es ~init:Id.Set.empty ~f:(fun acc e -> acc @| fv e)
     | Record fields ->
-        List.fold fields
-          ~init:(Set.empty (module Id))
-          ~f:(fun acc (k, v) -> Set.(union acc (union (fv k) (fv v))))
-    | If (cond, e1, e2) -> Set.(union (fv cond) (union (fv e1) (fv e2)))
+        List.fold fields ~init:Id.Set.empty ~f:(fun acc (k, v) ->
+            acc @| fv k @| fv v)
+    | If (cond, e1, e2) -> fv cond @| fv e1 @| fv e2
     | Prim_call (id, es) ->
-        List.fold es
-          ~init:(Set.singleton (module Id) id)
-          ~f:(fun acc e -> Set.union acc (fv e))
+        List.fold es ~init:(Id.Set.singleton id) ~f:(fun acc e -> acc @| fv e)
 end
 
 module Exp = struct

@@ -1,4 +1,4 @@
-open Core
+open! Core
 open Program
 
 type t = fn Id.Map.t
