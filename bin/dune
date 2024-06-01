@@ -2,5 +2,4 @@
  (public_name stappl)
  (name main)
  (libraries project)
- (modes byte exe)
-)
+ (modes byte exe))
