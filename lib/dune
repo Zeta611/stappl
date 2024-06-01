@@ -1,5 +1,5 @@
 (library
- (name project)
+ (name stappl)
  (libraries str core)
  (preprocess
   (pps ppx_jane)))

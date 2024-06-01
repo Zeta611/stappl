@@ -11,6 +11,7 @@ bug-reports: "https://github.com/shapespeare/stappl/issues"
 depends: [
   "dune" {>= "3.4"}
   "core" {>= "0.16.2"}
+  "core_unix" {>= "0.16.0"}
   "ppx_jane" {>= "0.16.0"}
   "menhir" {>= "20231231"}
   "odoc" {with-doc}

@@ -39,5 +39,5 @@ let union g1 g2 =
           | `Both _ -> failwith "Graph.union: duplicate observation");
   }
 
-let pp (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum
 let ( @+ ) = union
+let pretty (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum

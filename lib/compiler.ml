@@ -56,7 +56,8 @@ let gather_functions (prog : program) : Env.t =
 
 exception Not_closed_observation
 
-let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
+let compile (program : program) : Graph.t * Det_exp.t =
+  let env = gather_functions program in
   let rec compile pred =
     let compile' e = compile pred e in
     let open Graph in
@@ -215,4 +216,4 @@ let compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) : Graph.t * Det_exp.t =
         in
         (g, Det_exp.Record des)
   in
-  compile pred exp
+  compile Pred.Empty program.exp

@@ -122,4 +122,5 @@ module Det_exp = struct
           ~f:(fun acc e -> Set.union acc (fv e))
 end
 
-let pp pgm = print_endline (sexp_of_program pgm |> Sexp.to_string_hum)
+let pretty (prog : program) : string =
+  prog |> sexp_of_program |> Sexp.to_string_hum

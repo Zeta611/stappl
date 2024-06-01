@@ -25,9 +25,9 @@
  (description "STAPPL is a statically typed probabilistic programming language")
  (depends
   (core (>= 0.16.2))
+  (core_unix (>= 0.16.0))
   (ppx_jane (>= 0.16.0))
   (menhir (>= 20231231))))
-;(map_workspace_root false)
 
 (license MIT)
 
