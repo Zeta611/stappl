@@ -85,7 +85,13 @@ let gen_sym =
   let cnt = ref 0 in
   fun () ->
     incr cnt;
-    Printf.sprintf "X_%d" !cnt
+    Printf.sprintf "#%d" !cnt
+
+let gen_vertex =
+  let cnt = ref 0 in
+  fun () ->
+    incr cnt;
+    Printf.sprintf "X%d" !cnt
 
 let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   let sub' exp = sub exp x det_exp in
@@ -136,7 +142,7 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
   | Var x -> (Graph.empty, Det_exp.Var x)
   | Sample e ->
       let g, de = compile env pred e in
-      let v = gen_sym () in
+      let v = gen_vertex () in
       let de_fvs = Det_exp.fv de in
       let f = Dist.score de v in
       let g' =
@@ -152,7 +158,7 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
   | Observe (e1, e2) ->
       let g1, de1 = compile env pred e1 in
       let g2, de2 = compile env pred e2 in
-      let v = gen_sym () in
+      let v = gen_vertex () in
       let f1 = Dist.score de1 v in
       let f = Dist.(If_pred (pred, f1, One)) in
       let fvs = Set.union (Det_exp.fv de1) (Pred.fv pred) in
