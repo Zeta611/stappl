@@ -5,77 +5,76 @@ open Program
 %token <int> INT
 %token <float> REAL
 %token <string> ID
-%token IF LET FUN IN SAMPLE OBSERVE PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NOTEQ LESS GREAT AND OR NOT
-%token LSQUARE RSQUARE COMMA LBRACKET RBRACKET COLON SEMICOLON THEN ELSE
-%token LPAREN RPAREN EOF
+%token IF THEN ELSE FUN LET IN
+%token PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NE LT GT AND OR NOT
+%token SAMPLE OBSERVE
+%token LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE
+%token COMMA COLON SEMICOLON
+%token EOF
 
 %nonassoc IN
-%left SEMICOLON
-%nonassoc ELSE EQ NOTEQ LESS GREAT
-%left PLUS MINUS AND OR RPLUS RMINUS
-%right MULT DIV RMULT RDIV NOT
-%left NEG RNEG
+%right SEMICOLON
+%nonassoc ELSE
+%right OR
+%right AND
+%left EQ NE LT GT
+%left PLUS MINUS RPLUS RMINUS
+%left MULT DIV RMULT RDIV
+%nonassoc NOT NEG RNEG
 
-%start program
-%type <Program.program> program
-
+%start <Program.program> program
 %%
 
 program:
-  | FUN ID idlist EQ exp SEMICOLON program {
-    let {funs; exp} = $7 in {funs = { name = $2; params = $3; body = $5 } :: funs; exp}
-  }
-  | exp EOF { { funs = []; exp = $1 } }
+  | FUN; name = ID; LPAREN; params = params; RPAREN; LBRACE; body = exp; RBRACE; rest = program
+    { let { funs; exp } = rest in { funs = { name; params; body } :: funs; exp } }
+  | exp = exp; EOF
+    { { funs = []; exp } }
   ;
 
 exp:
-  | LPAREN exp RPAREN { $2 }
-	| INT { Int $1 }
-	| REAL { Real $1 }
-	| ID { Var $1 }
-	| ID LPAREN arglist RPAREN { Call ($1, $3) }
-	| IF exp THEN exp ELSE exp { If ($2, $4, $6) }
-	| LET ID EQ exp IN exp { Assign ($2, $4, $6) }
-	| SAMPLE LPAREN exp RPAREN { Sample $3 }
-	| OBSERVE LPAREN exp COMMA exp RPAREN { Observe ($3, $5) }
-	| exp PLUS exp { Add ($1, $3) }
-	| exp RPLUS exp { Radd ($1, $3) }
-	| exp MINUS exp { Minus ($1, $3) }
-	| exp RMINUS exp { Rminus ($1, $3) }
-	| exp MULT exp { Mult ($1, $3) }
-	| exp RMULT exp { Rmult ($1, $3) }
-	| exp DIV exp { Div ($1, $3) }
-	| exp RDIV exp { Rdiv ($1, $3) }
-	| exp EQ exp { Eq ($1, $3) }
-	| exp NOTEQ exp { Noteq ($1, $3) }
-	| exp LESS exp { Less ($1, $3) }
-	| exp GREAT exp { Less ($3, $1) }
-	| exp AND exp { And ($1, $3) }
-	| exp OR exp { Or ($1, $3) }
-	| exp SEMICOLON exp { Seq ($1, $3) }
-	| NOT exp { Not $2 }
-	| LSQUARE explist RSQUARE { List $2 }
-	| LBRACKET reclist RBRACKET { Record $2 }
-	| NEG exp { Neg $2 }
-  	| RNEG exp { Rneg $2 }
+  | LPAREN; e = exp; RPAREN { e }
+	| i = INT { Int i }
+	| r = REAL { Real r }
+	| x = ID { Var x }
+  | f = ID; LPAREN; es = args; RPAREN { Call (f, es) }
+  | IF; e_pred = exp; THEN; e_con = exp; ELSE; e_alt = exp { If (e_pred, e_con, e_alt) }
+  | LET; x = ID; EQ; e = exp; IN; body = exp { Assign (x, e, body) }
+  | SAMPLE; LPAREN; e = exp; RPAREN { Sample e }
+  | OBSERVE; LPAREN; e1 = exp; COMMA; e2 = exp; RPAREN { Observe (e1, e2) }
+  | e1 = exp; PLUS; e2 = exp { Add (e1, e2) }
+  | e1 = exp; RPLUS; e2 = exp { Radd (e1, e2) }
+  | e1 = exp; MINUS; e2 = exp { Minus (e1, e2) }
+  | e1 = exp; RMINUS; e2 = exp { Rminus (e1, e2) }
+  | e1 = exp; MULT; e2 = exp { Mult (e1, e2) }
+  | e1 = exp; RMULT; e2 = exp { Rmult (e1, e2) }
+  | e1 = exp; DIV; e2 = exp { Div (e1, e2) }
+  | e1 = exp; RDIV; e2 = exp { Rdiv (e1, e2) }
+  | e1 = exp; EQ; e2 = exp { Eq (e1, e2) }
+  | e1 = exp; NE; e2 = exp { Noteq (e1, e2) }
+  | e1 = exp; LT; e2 = exp { Less (e1, e2) }
+  | e1 = exp; GT; e2 = exp { Less (e1, e2) }
+  | e1 = exp; AND; e2 = exp { And (e1, e2) }
+  | e1 = exp; OR; e2 = exp { Or (e1, e2) }
+  | e1 = exp; SEMICOLON; e2 = exp { Seq (e1, e2) }
+  | NOT; e = exp { Not e }
+  | LBRACK; es = list_fields; RBRACK { List es }
+  | LBRACE; es = rec_fields; RBRACE { Record es }
+  | NEG; e = exp { Neg e }
+  | RNEG; e = exp { Rneg e }
 	;
 
-idlist: { [] }
-	| ID idlist { $1 :: $2 }
-	;
+params:
+    params = separated_list(COMMA, ID) { params } ;
 
-arglist: { [] }
-  | exp { [$1] }
-	| exp COMMA arglist { $1 :: $3 }
-	;
+args:
+    args = separated_list(COMMA, exp) { args } ;
 
-explist: { [] }
-  | exp { [$1] }
-	| exp COMMA explist { $1 :: $3 }
-	;
+list_fields:
+    lst = separated_list(COMMA, exp) { lst } ;
 
-reclist: { [] }
-  | exp COLON exp { [($1, $3)] }
-	| exp COLON exp COMMA reclist { ($1, $3) :: $5 }
-	;
-%%
+rec_fields:
+    record = separated_list(COMMA, rec_field) { record } ;
+
+rec_field:
+    k = exp; COLON; v = exp { (k, v) } ;

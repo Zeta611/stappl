@@ -8,7 +8,7 @@ let print_position (outx : Out_channel.t) (lexbuf : Lexing.lexbuf) : unit =
     (pos.pos_cnum - pos.pos_bol + 1)
 
 let parse_with_error (lexbuf : Lexing.lexbuf) : Program.program =
-  Parser.program Lexer.start lexbuf
+  Parser.program Lexer.read lexbuf
 
 let get_program (filename : string) : Program.program =
   let filename, inx =
