@@ -162,10 +162,10 @@ let rec compile (env : Env.t) (pred : Pred.t) (exp : Exp.t) :
             let g', de = compile env pred e in
             (g @+ g', de))
       in
-      let body = f.body in
-      let param_det_pairs = List.zip_exn f.params det_exps in
+      let { params; body; _ } = f in
+      let param_det_pairs = List.zip_exn params det_exps in
       let sub_body =
-        List.fold_left param_det_pairs ~init:body
+        List.fold param_det_pairs ~init:body
           ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
       in
       let g_body, det_exp_body = compile env pred sub_body in
