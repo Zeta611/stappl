@@ -129,7 +129,7 @@ module Det_exp = struct
         match eval cond with
         | Bool true -> eval e1
         | Bool false -> eval e2
-        | evaled_cond -> If(evaled_cond, eval e1, eval e2))
+        | evaled_cond -> If (evaled_cond, eval e1, eval e2))
     | Prim_call (f, es) -> (
         let ev_args = List.map es ~f:(fun e -> eval e) in
 
