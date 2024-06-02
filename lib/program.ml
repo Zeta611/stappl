@@ -76,20 +76,22 @@ module Det_exp = struct
     | Prim_call (_, es) ->
         List.fold es ~init:Id.Set.empty ~f:(fun acc e -> acc @| fv e)
 
+  let to_string (de : t) : string = de |> sexp_of_t |> Sexp.to_string_hum
+
   let rec eval (exp : t) : t =
     (* let eval2 f e1 e2 = f (eval e1) (eval e2) in *)
-    let evi ctor f e1 e2 =
+    let evi ctor ector f e1 e2 =
       match (eval e1, eval e2) with
       | Int i1, Int i2 -> ctor (f i1 i2)
-      | _, _ -> exp
-    and evr ctor f e1 e2 =
+      | ee1, ee2 -> ector ee1 ee2
+    and evr ctor ector f e1 e2 =
       match (eval e1, eval e2) with
       | Real r1, Real r2 -> ctor (f r1 r2)
-      | _, _ -> exp
-    and evb ctor f e1 e2 =
+      | ee1, ee2 -> ector ee1 ee2
+    and evb ctor ector f e1 e2 =
       match (eval e1, eval e2) with
       | Bool b1, Bool b2 -> ctor (f b1 b2)
-      | _, _ -> exp
+      | ee1, ee2 -> ector ee1 ee2
     in
     let evii = evi int
     and evib = evi bool
@@ -98,33 +100,36 @@ module Det_exp = struct
     and evbb = evb bool in
     match exp with
     | Int _ | Real _ | Var _ | Bool _ -> exp
-    | Add (e1, e2) -> evii ( + ) e1 e2
-    | Radd (e1, e2) -> evrr ( +. ) e1 e2
-    | Minus (e1, e2) -> evii ( - ) e1 e2
-    | Rminus (e1, e2) -> evrr ( -. ) e1 e2
-    | Neg e -> ( match eval e with Int i -> Int (-i) | _ -> exp)
-    | Rneg e -> ( match eval e with Real r -> Real (-.r) | _ -> exp)
+    | Add (e1, e2) -> evii add ( + ) e1 e2
+    | Radd (e1, e2) -> evrr radd ( +. ) e1 e2
+    | Minus (e1, e2) -> evii minus ( - ) e1 e2
+    | Rminus (e1, e2) -> evrr rminus ( -. ) e1 e2
+    | Neg e -> ( match eval e with Int i -> Int (-i) | z -> z)
+    | Rneg e -> ( match eval e with Real r -> Real (-.r) | z -> z)
     | Mult (Int 0, _) -> Int 0
     | Mult (_, Int 0) -> Int 0
-    | Mult (e1, e2) -> evii ( * ) e1 e2
+    | Mult (e1, e2) -> evii mult ( * ) e1 e2
     | Rmult (Real 0., _) -> Real 0.
     | Rmult (_, Real 0.) -> Real 0.
-    | Rmult (e1, e2) -> evrr ( *. ) e1 e2
-    | Div (e1, e2) -> evii ( / ) e1 e2
-    | Rdiv (e1, e2) -> evrr ( /. ) e1 e2
-    | Eq (e1, e2) -> evib ( = ) e1 e2
-    | Req (e1, e2) -> evrb Float.( = ) e1 e2
-    | Noteq (e1, e2) -> evib ( <> ) e1 e2
-    | Less (e1, e2) -> evib ( < ) e1 e2
-    | Rless (e1, e2) -> evrb Float.( < ) e1 e2
-    | And (e1, e2) -> evbb ( && ) e1 e2
-    | Or (e1, e2) -> evbb ( || ) e1 e2
-    | Not e -> ( match eval e with Bool b -> Bool (Core.not b) | _ -> exp)
+    | Rmult (e1, e2) -> evrr rmult ( *. ) e1 e2
+    | Div (e1, e2) -> evii div ( / ) e1 e2
+    | Rdiv (e1, e2) -> evrr rdiv ( /. ) e1 e2
+    | Eq (e1, e2) -> evib eq ( = ) e1 e2
+    | Req (e1, e2) -> evrb req Float.( = ) e1 e2
+    | Noteq (e1, e2) -> evib noteq ( <> ) e1 e2
+    | Less (e1, e2) -> evib less ( < ) e1 e2
+    | Rless (e1, e2) -> evrb rless Float.( < ) e1 e2
+    | And (e1, e2) -> evbb and_ ( && ) e1 e2
+    | Or (e1, e2) -> evbb or_ ( || ) e1 e2
+    | Not e -> ( match eval e with Bool b -> Bool (Core.not b) | z -> z)
     | List es -> List (List.map es ~f:eval)
     | Record fields ->
         Record (List.map fields ~f:(fun (k, v) -> (eval k, eval v)))
     | If (cond, e1, e2) -> (
-        match eval cond with Bool true -> eval e1 | _ -> eval e2)
+        match eval cond with
+        | Bool true -> eval e1
+        | Bool false -> eval e2
+        | evaled_cond -> If(evaled_cond, eval e1, eval e2))
     | Prim_call (f, es) -> (
         let ev_args = List.map es ~f:(fun e -> eval e) in
 

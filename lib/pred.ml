@@ -1,7 +1,12 @@
 open! Core
 open Program
 
-type t = Empty | And of Det_exp.t * t | And_not of Det_exp.t * t
+type t =
+  | Empty
+  | True
+  | False
+  | And of Det_exp.t * t
+  | And_not of Det_exp.t * t
 [@@deriving sexp]
 
 let ( &&& ) p de = And (de, p)
@@ -9,24 +14,29 @@ let ( &&! ) p de = And_not (de, p)
 
 let rec fv : t -> Id.Set.t = function
   | Empty -> Id.Set.empty
+  | True -> Id.Set.empty
+  | False -> Id.Set.empty
   | And (de, p) | And_not (de, p) -> Id.(Det_exp.fv de @| fv p)
 
-let rec eval (exp : t) : bool option =
-  let de_eval de =
-    match Det_exp.eval de with
-    | Bool true -> Some true
-    | Bool false -> Some false
-    | _ -> None
-  in
+let rec to_string : t -> string = function
+  | Empty -> "Empty"
+  | True -> "True"
+  | False -> "False"
+  | And (de, p) ->
+      Printf.sprintf "%s &&& %s" (Det_exp.to_string de) (to_string p)
+  | And_not (de, p) ->
+      Printf.sprintf "%s &&! %s" (Det_exp.to_string de) (to_string p)
+
+let rec eval (exp : t) : t =
   match exp with
-  | Empty -> Some true
+  | Empty | True | False -> exp
   | And (de, p) -> (
-      match de_eval de with
-      | Some true -> eval p
-      | Some false -> Some false
-      | None -> None)
+      match Det_exp.eval de with
+      | Bool true -> eval p
+      | Bool false -> False
+      | _ -> exp)
   | And_not (de, p) -> (
-      match de_eval de with
-      | Some true -> Some false
-      | Some false -> eval p
-      | None -> None)
+      match Det_exp.eval de with
+      | Bool true -> False
+      | Bool false -> eval p
+      | _ -> exp)

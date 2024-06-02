@@ -119,17 +119,23 @@ let compile (program : program) : Graph.t * Det_exp.t =
         let sub_body = sub body x det_exp1 in
         let g2, det_exp2 = compile' sub_body in
         (g1 @| g2, det_exp2)
-    | If (e_pred, e_con, e_alt) ->
+    | If (e_pred, e_con, e_alt) -> (
         let g1, det_exp_pred = compile' e_pred in
         let open Pred in
-        let g2, det_exp_con = compile (pred &&& det_exp_pred) e_con in
-        let g3, det_exp_alt = compile (pred &&! det_exp_pred) e_alt in
-        (g1 @| g2 @| g3, If (det_exp_pred, det_exp_con, det_exp_alt))
+        let evaled_true_pred = Pred.eval (pred &&& det_exp_pred) in
+        let evaled_false_pred = pred &&! det_exp_pred in
+        let g2, det_exp_con = compile evaled_true_pred e_con in
+        let g3, det_exp_alt = compile evaled_false_pred e_alt in
+        match evaled_true_pred with
+        | True -> (g1 @| g2 @| g3, det_exp_con)
+        | False -> (g1 @| g2 @| g3, det_exp_alt)
+        | _ -> (g1 @| g2 @| g3, If (det_exp_pred, det_exp_con, det_exp_alt)))
     | Call (c, params) -> (
         let g, det_exps =
           List.fold_map params ~init:Graph.empty ~f:(fun g e ->
               let g', de = compile' e in
-              (g @| g', de))
+              let evaled_de = eval de in
+              (g @| g', evaled_de))
         in
         match Env.find env ~name:c with
         | Some f ->
