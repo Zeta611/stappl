@@ -34,9 +34,14 @@ let command : Command.t =
        Language")
     (let%map_open.Command filename =
        anon (maybe_with_default "-" ("filename" %: Filename_unix.arg_type))
-     and pp = flag "-pp" no_arg ~doc:" Pretty print the program" in
+     and pp = flag "-pp" no_arg ~doc:" Pretty print the program"
+     and inf = flag "-infer" no_arg ~doc:" Inferthe program" in
      fun () ->
        if pp then get_program filename |> Program.pretty |> print_endline
+       else if inf then
+         let open Inference_runner in
+         let graph, query = get_program filename |> Compiler.compile in
+         infer graph query
        else
          get_program filename |> Compiler.compile |> fst |> Graph.pretty
          |> print_endline)
