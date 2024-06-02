@@ -58,8 +58,8 @@ module Det_exp = struct
         List.fold fields ~init:Id.Set.empty ~f:(fun acc (k, v) ->
             acc @| fv k @| fv v)
     | If (cond, e1, e2) -> fv cond @| fv e1 @| fv e2
-    | Prim_call (id, es) ->
-        List.fold es ~init:(Id.Set.singleton id) ~f:(fun acc e -> acc @| fv e)
+    | Prim_call (_, es) ->
+        List.fold es ~init:Id.Set.empty ~f:(fun acc e -> acc @| fv e)
 end
 
 module Exp = struct
