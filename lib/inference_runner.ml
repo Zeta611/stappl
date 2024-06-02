@@ -22,6 +22,15 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
   in
   eval env exp
 
+let sample_from_dist dist args =
+  match (dist, args) with
+  | "bernoulli", [ p ] -> if Float.(Random.float 1.0 < p) then 1.0 else 0.0
+  | "normal", [ mu; sigma ] -> Owl.Stats.gaussian_rvs ~mu ~sigma
+  | "uniform", [ a; b ] -> Owl.Stats.uniform_rvs ~a ~b
+  | "exponential", [ lambda ] -> Owl.Stats.exponential_rvs ~lambda
+  | "gamma", [ shape; scale ] -> Owl.Stats.gamma_rvs ~shape ~scale
+  | _ -> failwith ("Unsupported distribution: " ^ dist)
+
 let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
     (num_iterations : int) (query : Det_exp.t) : float array =
   let samples = Array.create ~len:num_iterations 0.0 in
@@ -33,8 +42,17 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
   for i = 0 to num_iterations - 1 do
     List.iter g.vertices ~f:(fun v ->
         if not (Map.mem g.obs_map v) then
-          let new_value = Random.float 1.0 in
-          (*TODO: Use g.arcs and g.det_map*)
+          let new_value =
+            match Map.find g.det_map v with
+            | Some (Dist_obj { dist; args; _ }) ->
+                let evaluated_args =
+                  List.map args ~f:(eval_with_infer_env !env)
+                in
+                sample_from_dist dist evaluated_args
+            | Some (If_de (_, _, _)) -> failwith "If_de not supported"
+            | Some (If_pred (_, _, _)) -> failwith "If_pred not supported"
+            | None -> Random.float 1.0
+          in
           env := Infer_env.add !env v new_value);
     samples.(i) <- eval_with_infer_env !env query
   done;
@@ -42,9 +60,12 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
 
 let infer (graph : Graph.t) (query : Det_exp.t) =
   let num_iterations = 1000 in
-  (* TODO: use graph.obs_map in initialization*)
+  (* Use graph.obs_map in initialization*)
   let initial_state =
-    List.map graph.vertices ~f:(fun v -> (v, Det_exp.Var v))
+    List.map graph.vertices ~f:(fun v ->
+        match Map.find graph.obs_map v with
+        | Some obs_value -> (v, obs_value)
+        | None -> (v, Det_exp.Var v))
   in
   let samples = gibbs_sampling graph initial_state num_iterations query in
   let open Owl_plplot in
