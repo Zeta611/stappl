@@ -1,7 +1,7 @@
 fun main() {
   let a = sample(uniform(0.0, 1.0)) in
   let b = sample(exponential(1.0)) in
-  let c = if (a > 0.5) then sample(gamma(2.0, 2.0)) else sample(gamma(3.0, 1.0)) in
+  let c = if (a > 0.5) then gamma(2.0, 2.0) else gamma(3.0, 1.0) in
   observe(c, 2.0);
   a
 }

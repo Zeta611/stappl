@@ -1,7 +1,7 @@
 fun main() {
   let x = sample(bernoulli(0.4)) in
   let y = sample(normal(0.0, 1.0)) in
-  let z = if (x = 1) then sample(normal(y, 1.0)) else sample(normal(~-.y, 1.0)) in
+  let z = if (x = 1) then normal(y, 1.0) else normal(~-.y, 1.0) in
   observe(z, 0.5);
   x
 }
