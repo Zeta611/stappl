@@ -4,6 +4,4 @@
  (libraries core core_unix.command_unix core_unix.filename_unix stappl)
  (modes byte exe)
  (preprocess
-  (pps ppx_jane))
- (flags
-  (:standard -g)))
+  (pps ppx_jane)))

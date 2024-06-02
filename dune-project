@@ -26,6 +26,7 @@
  (depends
   (core (>= 0.16.2))
   (core_unix (>= 0.16.0))
+  (owl (>= 1.1))
   (string_dict (>= 0.16.0))
   (ppx_jane (>= 0.16.0))
   (menhir (>= 20231231))))

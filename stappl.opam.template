@@ -1,0 +1,3 @@
+pin-depends: [
+  [ "owl.1.1" "git+https://github.com/owlbarn/owl#06943b0267e7e80dd0eba94ebf63ca4d25c71910" ]
+]

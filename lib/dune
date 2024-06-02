@@ -1,6 +1,6 @@
 (library
  (name stappl)
- (libraries str core string_dict)
+ (libraries core owl string_dict)
  (preprocess
   (pps ppx_jane)))
 
