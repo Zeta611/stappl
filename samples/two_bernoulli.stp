@@ -3,11 +3,22 @@ fun main() {
   let b = sample(bernoulli(0.7)) in
   let x = if (a = 1.0) then 0.9 else 0.2 in
   let y = if (b = 1.0) then 0.3 else 0.6 in
-  let z = sample(bernoulli(x)) in
-  let w = sample(bernoulli(y)) in
+  let z = bernoulli(x) in # sample (bernoulli(x))로 하면 당연히 안됨. 타입 체킹 해야 함.
+  let w = bernoulli(y) in
   observe(z, 1.0);
   observe(w, 0.0);
   z
 }
 
 main()
+
+# V = {a, b, x, y, z, w}
+# A = {(a, x), (b, y), (x, z), (y, w)}
+# P = {a -> bernoulli(0.5),
+#      b -> bernoulli(0.7),
+#      x -> if (a = 1) then 0.9 else 0.2,
+#      y -> if (b = 1) then 0.3 else 0.6,
+#      z -> bernoulli(x),
+#      w -> bernoulli(y)}
+# Y = {z -> 1, w -> 0}
+# E = z

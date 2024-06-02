@@ -21,7 +21,12 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
     | Det_exp.Radd (e1, e2) -> evr ( +. ) e1 e2
     | Det_exp.Minus (e1, e2) -> eval env e1 -. eval env e2
     | Det_exp.Mult (e1, e2) -> eval env e1 *. eval env e2
-    | _ -> failwith "Unsupported expression"
+    | Det_exp.Div (e1, e2) -> eval env e1 /. eval env e2
+    | 
+    | _ ->
+        failwith
+          (sprintf "Unsupported expression %s"
+             (Det_exp.to_string simplified_exp))
   in
   eval env exp
 
