@@ -1,0 +1,17 @@
+fun main() {
+  let x = sample(bernoulli(0.4)) in
+  let y = sample(normal(0.0, 1.0)) in
+  let z = if (x = 1) then sample(normal(y, 1.0)) else sample(normal(~-.y, 1.0)) in
+  observe(z, 0.5);
+  x
+}
+
+main()
+
+# V = {x, y, z}
+# A = {(x, z), (y, z)}
+# P = {x -> bernoulli(0.4),
+#      y -> normal(0.0, 1.0),
+#      z -> if (x = 1) then normal(y, 1.0) else normal(-y, 1.0)}
+# Y = {z -> 0.5}
+# E = x
