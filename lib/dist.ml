@@ -15,6 +15,7 @@ exception Score_invalid_arguments
 let prim_to_dist : Id.t -> t = function a -> a
 
 let rec score (det_exp : Det_exp.t) (var : Id.t) =
+  printf "score: %s\n" (Det_exp.to_string det_exp);
   match det_exp with
   | If (e_pred, e_con, e_alt) ->
       let s_con = score e_con var in

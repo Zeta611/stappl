@@ -34,6 +34,17 @@ let sample_from_dist dist args =
   | "gamma", [ shape; scale ] -> Owl.Stats.gamma_rvs ~shape ~scale
   | _ -> failwith ("Unsupported distribution: " ^ dist)
 
+let rec eval_conditional (env : Infer_env.t) (cond : Dist.exp) =
+  match cond with
+  | Dist_obj { dist; args; _ } ->
+      let evaluated_args = List.map args ~f:(eval_with_infer_env env) in
+      sample_from_dist dist evaluated_args
+  | If_de (pred, conseq, alt) ->
+      if Float.(eval_with_infer_env env pred <> 0.0) then
+        eval_conditional env conseq
+      else eval_conditional env alt
+  | If_pred (_, conseq, One) -> eval_conditional env conseq
+
 let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
     (num_iterations : int) (query : Det_exp.t) : float array =
   let samples = Array.create ~len:num_iterations 0.0 in
@@ -47,13 +58,7 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
         if not (Map.mem g.obs_map v) then
           let new_value =
             match Map.find g.det_map v with
-            | Some (Dist_obj { dist; args; _ }) ->
-                let evaluated_args =
-                  List.map args ~f:(eval_with_infer_env !env)
-                in
-                sample_from_dist dist evaluated_args
-            | Some (If_de (_, _, _)) -> failwith "If_de not supported"
-            | Some (If_pred (_, _, _)) -> failwith "If_pred not supported"
+            | Some exp -> eval_conditional !env exp
             | None -> Random.float 1.0
           in
           env := Infer_env.add !env v new_value);

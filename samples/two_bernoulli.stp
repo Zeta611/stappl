@@ -1,0 +1,13 @@
+fun main() {
+  let a = sample(bernoulli(0.5)) in
+  let b = sample(bernoulli(0.7)) in
+  let x = if (a = 1.0) then 0.9 else 0.2 in
+  let y = if (b = 1.0) then 0.3 else 0.6 in
+  let z = sample(bernoulli(x)) in
+  let w = sample(bernoulli(y)) in
+  observe(z, 1.0);
+  observe(w, 0.0);
+  z
+}
+
+main()
