@@ -53,7 +53,7 @@ exp:
   | e1 = exp; EQ; e2 = exp { Eq (e1, e2) }
   | e1 = exp; NE; e2 = exp { Noteq (e1, e2) }
   | e1 = exp; LT; e2 = exp { Less (e1, e2) }
-  | e1 = exp; GT; e2 = exp { Less (e1, e2) }
+  | e1 = exp; GT; e2 = exp { Less (e2, e1) }
   | e1 = exp; AND; e2 = exp { And (e1, e2) }
   | e1 = exp; OR; e2 = exp { Or (e1, e2) }
   | e1 = exp; SEMICOLON; e2 = exp { Seq (e1, e2) }

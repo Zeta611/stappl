@@ -20,7 +20,7 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   let open Exp in
   match exp with
   | Var y when Id.(x = y) -> Exp.of_det_exp det_exp
-  | Int _ | Real _ | Var _ -> exp
+  | Int _ | Real _ | Var _ | Bool _ -> exp
   | Add (e1, e2) -> s2 add e1 e2
   | Radd (e1, e2) -> s2 radd e1 e2
   | Minus (e1, e2) -> s2 minus e1 e2
@@ -32,8 +32,10 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   | Div (e1, e2) -> s2 div e1 e2
   | Rdiv (e1, e2) -> s2 rdiv e1 e2
   | Eq (e1, e2) -> s2 eq e1 e2
+  | Req (e1, e2) -> s2 req e1 e2
   | Noteq (e1, e2) -> s2 noteq e1 e2
   | Less (e1, e2) -> s2 less e1 e2
+  | Rless (e1, e2) -> s2 rless e1 e2
   | And (e1, e2) -> s2 and_ e1 e2
   | Or (e1, e2) -> s2 or_ e1 e2
   | Seq (e1, e2) -> s2 seq e1 e2
@@ -79,6 +81,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
     function
     | Int n -> c0 (Int n)
     | Real r -> c0 (Real r)
+    | Bool b -> c0 (Bool b)
     | Var x -> c0 (Var x)
     | Sample e ->
         let g, de = compile' e in
@@ -150,8 +153,10 @@ let compile (program : program) : Graph.t * Det_exp.t =
     | Div (e1, e2) -> c2 e1 e2 div
     | Rdiv (e1, e2) -> c2 e1 e2 rdiv
     | Eq (e1, e2) -> c2 e1 e2 eq
+    | Req (e1, e2) -> c2 e1 e2 req
     | Noteq (e1, e2) -> c2 e1 e2 noteq
     | Less (e1, e2) -> c2 e1 e2 less
+    | Rless (e1, e2) -> c2 e1 e2 rless
     | And (e1, e2) -> c2 e1 e2 and_
     | Or (e1, e2) -> c2 e1 e2 or_
     | Seq (e1, e2) -> c2 e1 e2 (fun _ de -> de)
