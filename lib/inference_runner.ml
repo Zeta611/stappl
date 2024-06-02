@@ -13,7 +13,10 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
     | Det_exp.Var x -> (
         match Infer_env.find env x with
         | Some value -> value
-        | None -> failwith "Variable not found in environment")
+        | None ->
+            Random.float 1.0
+            (*failwith (Printf.sprintf "Variable %s not found in environment in %s" x (Infer_env.to_string env)))*)
+        )
     | Det_exp.Add (e1, e2) -> evi ( +. ) e1 e2
     | Det_exp.Radd (e1, e2) -> evr ( +. ) e1 e2
     | Det_exp.Minus (e1, e2) -> eval env e1 -. eval env e2
