@@ -13,6 +13,7 @@ depends: [
   "core" {>= "0.16.2"}
   "core_unix" {>= "0.16.0"}
   "owl" {>= "1.1"}
+  "owl-plplot" {>= "1.0"}
   "string_dict" {>= "0.16.0"}
   "ppx_jane" {>= "0.16.0"}
   "menhir" {>= "20231231"}
@@ -35,4 +36,5 @@ build: [
 dev-repo: "git+https://github.com/shapespeare/stappl.git"
 pin-depends: [
   [ "owl.1.1" "git+https://github.com/owlbarn/owl#06943b0267e7e80dd0eba94ebf63ca4d25c71910" ]
+  [ "owl-plplot.1.0" "git+https://github.com/owlbarn/owl-plplot#ebc73c09a907c1c6ca2c4b970bdb70202ec90b50" ]
 ]

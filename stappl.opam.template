@@ -1,3 +1,4 @@
 pin-depends: [
   [ "owl.1.1" "git+https://github.com/owlbarn/owl#06943b0267e7e80dd0eba94ebf63ca4d25c71910" ]
+  [ "owl-plplot.1.0" "git+https://github.com/owlbarn/owl-plplot#ebc73c09a907c1c6ca2c4b970bdb70202ec90b50" ]
 ]
