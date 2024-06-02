@@ -36,7 +36,8 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
         sample_from_dist fn evaled_args
     | Det_exp.If (pred, conseq, alt) ->
         if Float.(eval env pred <> 0.0) then eval env conseq else eval env alt
-    | Det_exp.Eq (e1, e2) -> if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
+    | Det_exp.Eq (e1, e2) ->
+        if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
     | _ ->
         failwith
           (sprintf "Unsupported expression %s"
@@ -76,7 +77,7 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
   done;
   samples
 
-let infer (graph : Graph.t) (query : Det_exp.t) =
+let infer ~(filename : string) (graph : Graph.t) (query : Det_exp.t) : string =
   let num_iterations = 1000 in
   (* Use graph.obs_map in initialization*)
   let initial_state =
@@ -87,9 +88,11 @@ let infer (graph : Graph.t) (query : Det_exp.t) =
   in
   let samples = gibbs_sampling graph initial_state num_iterations query in
   let open Owl_plplot in
-  let h = Plot.create "distribution.png" in
+  let plot_path = filename ^ ".png" in
+  let h = Plot.create plot_path in
   Plot.set_title h "Query Distribution";
   let open Owl in
   let samples_matrix = Mat.of_array samples 1 num_iterations in
   Plot.histogram ~h ~bin:50 samples_matrix;
-  Plot.output h
+  Plot.output h;
+  plot_path

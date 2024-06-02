@@ -35,15 +35,21 @@ let command : Command.t =
     (let%map_open.Command filename =
        anon (maybe_with_default "-" ("filename" %: Filename_unix.arg_type))
      and pp = flag "-pp" no_arg ~doc:" Pretty print the program"
-     and inf = flag "-infer" no_arg ~doc:" Inferthe program" in
+     and infer = flag "-infer" no_arg ~doc:" Run inference on the program" in
      fun () ->
-       if pp then get_program filename |> Program.pretty |> print_endline
-       else if inf then
-         let open Inference_runner in
+       if pp then (
+         printf "Pretty-print: %s\n" filename;
+         get_program filename |> Program.pretty |> print_endline);
+
+       if pp then printf "\n";
+       printf "Compile: %s\n" filename;
+       get_program filename |> Compiler.compile |> fst |> Graph.pretty
+       |> print_endline;
+
+       if infer then (
+         printf "\nInference: %s\n" filename;
          let graph, query = get_program filename |> Compiler.compile in
-         infer graph query
-       else
-         get_program filename |> Compiler.compile |> fst |> Graph.pretty
-         |> print_endline)
+         printf "Query result saved at %s\n"
+           (Inference_runner.infer ~filename graph query)))
 
 let () = Command_unix.run ~version:"0.1.0" ~build_info:"STAPPL" command
