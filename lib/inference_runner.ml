@@ -1,6 +1,5 @@
 open! Core
 open Program
-open! Infer_env
 
 let sample_from_dist dist args =
   match (dist, args) with
@@ -19,8 +18,8 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
     match simplified_exp with
     | Det_exp.Int n -> float_of_int n
     | Det_exp.Real r -> r
-    | Det_exp.Var x -> (
-        match Infer_env.find env x with
+    | Det_exp.Var name -> (
+        match Infer_env.find env ~name with
         | Some value -> value
         | None ->
             Random.float 1.0
@@ -61,8 +60,9 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
   let samples = Array.create ~len:num_iterations 0.0 in
   let env =
     ref
-      (List.fold initial_state ~init:Infer_env.empty ~f:(fun env (x, value) ->
-           Infer_env.add env x (eval_with_infer_env env value)))
+      (List.fold initial_state ~init:Infer_env.empty
+         ~f:(fun env (name, value) ->
+           Infer_env.set env ~name ~value:(eval_with_infer_env env value)))
   in
   for i = 0 to num_iterations - 1 do
     List.iter g.vertices ~f:(fun v ->
@@ -72,7 +72,7 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
             | Some exp -> eval_conditional !env exp
             | None -> Random.float 1.0
           in
-          env := Infer_env.add !env v new_value);
+          env := Infer_env.set !env ~name:v ~value:new_value);
     samples.(i) <- eval_with_infer_env !env query
   done;
   samples

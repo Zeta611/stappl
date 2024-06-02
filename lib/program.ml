@@ -6,16 +6,6 @@ module Id = struct
   include String
 end
 
-module Value = struct
-  type t =
-    | Int of int
-    | Real of float
-    | Bool of bool
-    | List of t list
-    | Record of (t * t) list
-  [@@deriving sexp]
-end
-
 module Det_exp = struct
   type t =
     | Int of int
@@ -45,6 +35,8 @@ module Det_exp = struct
     | If of t * t * t
     | Prim_call of Id.t * t list
   [@@deriving sexp, variants, stable_variant]
+
+  let to_string (de : t) : string = de |> sexp_of_t |> Sexp.to_string_hum
 
   let rec fv : t -> Id.Set.t =
     let open Id in
@@ -76,41 +68,35 @@ module Det_exp = struct
     | Prim_call (_, es) ->
         List.fold es ~init:Id.Set.empty ~f:(fun acc e -> acc @| fv e)
 
-  let to_string (de : t) : string = de |> sexp_of_t |> Sexp.to_string_hum
-
   let rec eval (exp : t) : t =
-    (* let eval2 f e1 e2 = f (eval e1) (eval e2) in *)
-    let evi ctor ector f e1 e2 =
+    let evi dom ctor op e1 e2 =
       match (eval e1, eval e2) with
-      | Int i1, Int i2 -> ctor (f i1 i2)
-      | ee1, ee2 -> ector ee1 ee2
-    and evr ctor ector f e1 e2 =
+      | Int i1, Int i2 -> dom (op i1 i2)
+      | ee1, ee2 -> ctor ee1 ee2
+    and evr dom ctor op e1 e2 =
       match (eval e1, eval e2) with
-      | Real r1, Real r2 -> ctor (f r1 r2)
-      | ee1, ee2 -> ector ee1 ee2
-    and evb ctor ector f e1 e2 =
+      | Real r1, Real r2 -> dom (op r1 r2)
+      | ee1, ee2 -> ctor ee1 ee2
+    and evb dom ctor op e1 e2 =
       match (eval e1, eval e2) with
-      | Bool b1, Bool b2 -> ctor (f b1 b2)
-      | ee1, ee2 -> ector ee1 ee2
+      | Bool b1, Bool b2 -> dom (op b1 b2)
+      | ee1, ee2 -> ctor ee1 ee2
     in
     let evii = evi int
     and evib = evi bool
     and evrr = evr real
     and evrb = evr bool
     and evbb = evb bool in
+
     match exp with
     | Int _ | Real _ | Var _ | Bool _ -> exp
     | Add (e1, e2) -> evii add ( + ) e1 e2
     | Radd (e1, e2) -> evrr radd ( +. ) e1 e2
     | Minus (e1, e2) -> evii minus ( - ) e1 e2
     | Rminus (e1, e2) -> evrr rminus ( -. ) e1 e2
-    | Neg e -> ( match eval e with Int i -> Int (-i) | z -> z)
-    | Rneg e -> ( match eval e with Real r -> Real (-.r) | z -> z)
-    | Mult (Int 0, _) -> Int 0
-    | Mult (_, Int 0) -> Int 0
+    | Neg e -> ( match eval e with Int i -> Int (-i) | e -> e)
+    | Rneg e -> ( match eval e with Real r -> Real (-.r) | e -> e)
     | Mult (e1, e2) -> evii mult ( * ) e1 e2
-    | Rmult (Real 0., _) -> Real 0.
-    | Rmult (_, Real 0.) -> Real 0.
     | Rmult (e1, e2) -> evrr rmult ( *. ) e1 e2
     | Div (e1, e2) -> evii div ( / ) e1 e2
     | Rdiv (e1, e2) -> evrr rdiv ( /. ) e1 e2
@@ -121,7 +107,7 @@ module Det_exp = struct
     | Rless (e1, e2) -> evrb rless Float.( < ) e1 e2
     | And (e1, e2) -> evbb and_ ( && ) e1 e2
     | Or (e1, e2) -> evbb or_ ( || ) e1 e2
-    | Not e -> ( match eval e with Bool b -> Bool (Core.not b) | z -> z)
+    | Not e -> ( match eval e with Bool b -> Bool (Core.not b) | e -> e)
     | List es -> List (List.map es ~f:eval)
     | Record fields ->
         Record (List.map fields ~f:(fun (k, v) -> (eval k, eval v)))
@@ -129,25 +115,19 @@ module Det_exp = struct
         match eval cond with
         | Bool true -> eval e1
         | Bool false -> eval e2
-        | evaled_cond -> If (evaled_cond, eval e1, eval e2))
-    | Prim_call (f, es) -> (
-        let ev_args = List.map es ~f:(fun e -> eval e) in
-
-        let val_args =
-          List.fold ev_args ~init:(Some []) ~f:(fun acc e ->
-              match acc with
-              | None -> None
-              | Some acc -> (
-                  match e with
-                  | Int i -> Some (Value.Int i :: acc)
-                  | Real r -> Some (Value.Real r :: acc)
-                  | Bool b -> Some (Value.Bool b :: acc)
-                  | _ -> None))
+        | cond -> If (cond, eval e1, eval e2))
+    | Prim_call (f, es) ->
+        (* Evaluate arguments while checking if all arguments are fully evaluated *)
+        let all_const, ev_args =
+          List.fold_map es ~init:true ~f:(fun full_ev e ->
+              match eval e with
+              | (Int _ | Real _ | Bool _) as e -> (full_ev, e)
+              | e -> (false, e))
         in
-        match val_args with
-        | None -> Prim_call (f, ev_args)
-        | Some _val_args -> (* Prim_call (f, val_args) *) Prim_call (f, ev_args)
-        )
+        if all_const then
+          (* TODO Return an evaluated distribution object *)
+          Prim_call (f, ev_args)
+        else Prim_call (f, ev_args)
 end
 
 module Exp = struct

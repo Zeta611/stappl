@@ -1,7 +1,7 @@
 open! Core
 open Program
 
-type t = fn Id.Map.t
+type t = fn Id.Map.t [@@deriving sexp]
 
 let empty : t = Id.Map.empty
 

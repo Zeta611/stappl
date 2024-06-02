@@ -120,16 +120,16 @@ let compile (program : program) : Graph.t * Det_exp.t =
         let g2, det_exp2 = compile' sub_body in
         (g1 @| g2, det_exp2)
     | If (e_pred, e_con, e_alt) -> (
-        let g1, det_exp_pred = compile' e_pred in
-        let open Pred in
-        let evaled_true_pred = Pred.eval (pred &&& det_exp_pred) in
-        let evaled_false_pred = pred &&! det_exp_pred in
-        let g2, det_exp_con = compile evaled_true_pred e_con in
-        let g3, det_exp_alt = compile evaled_false_pred e_alt in
-        match evaled_true_pred with
-        | True -> (g1 @| g2 @| g3, det_exp_con)
-        | False -> (g1 @| g2 @| g3, det_exp_alt)
-        | _ -> (g1 @| g2 @| g3, If (det_exp_pred, det_exp_con, det_exp_alt)))
+        let g1, de_pred = compile' e_pred in
+        let pred_con = Pred.(eval (pred &&& de_pred)) in
+        let pred_alt = Pred.(eval (pred &&! de_pred)) in
+        let g2, de_con = compile pred_con e_con in
+        let g3, de_alt = compile pred_alt e_alt in
+        let g = Graph.(g1 @| g2 @| g3) in
+        match pred_con with
+        | True -> (g, de_con)
+        | False -> (g, de_alt)
+        | _ -> (g, If (de_pred, de_con, de_alt)))
     | Call (c, params) -> (
         let g, det_exps =
           List.fold_map params ~init:Graph.empty ~f:(fun g e ->
