@@ -2,6 +2,15 @@ open! Core
 open Program
 open! Infer_env
 
+let sample_from_dist dist args =
+  match (dist, args) with
+  | "bernoulli", [ p ] -> if Float.(Random.float 1.0 < p) then 1.0 else 0.0
+  | "normal", [ mu; sigma ] -> Owl.Stats.gaussian_rvs ~mu ~sigma
+  | "uniform", [ a; b ] -> Owl.Stats.uniform_rvs ~a ~b
+  | "exponential", [ lambda ] -> Owl.Stats.exponential_rvs ~lambda
+  | "gamma", [ shape; scale ] -> Owl.Stats.gamma_rvs ~shape ~scale
+  | _ -> failwith ("Unsupported distribution: " ^ dist)
+
 let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
   let rec eval env exp =
     let evi f e1 e2 = f (eval env e1) (eval env e2)
@@ -22,22 +31,18 @@ let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
     | Det_exp.Minus (e1, e2) -> eval env e1 -. eval env e2
     | Det_exp.Mult (e1, e2) -> eval env e1 *. eval env e2
     | Det_exp.Div (e1, e2) -> eval env e1 /. eval env e2
-    | 
+    | Det_exp.Prim_call (fn, args) ->
+        let evaled_args = List.map args ~f:(eval env) in
+        sample_from_dist fn evaled_args
+    | Det_exp.If (pred, conseq, alt) ->
+        if Float.(eval env pred <> 0.0) then eval env conseq else eval env alt
+    | Det_exp.Eq (e1, e2) -> if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
     | _ ->
         failwith
           (sprintf "Unsupported expression %s"
              (Det_exp.to_string simplified_exp))
   in
   eval env exp
-
-let sample_from_dist dist args =
-  match (dist, args) with
-  | "bernoulli", [ p ] -> if Float.(Random.float 1.0 < p) then 1.0 else 0.0
-  | "normal", [ mu; sigma ] -> Owl.Stats.gaussian_rvs ~mu ~sigma
-  | "uniform", [ a; b ] -> Owl.Stats.uniform_rvs ~a ~b
-  | "exponential", [ lambda ] -> Owl.Stats.exponential_rvs ~lambda
-  | "gamma", [ shape; scale ] -> Owl.Stats.gamma_rvs ~shape ~scale
-  | _ -> failwith ("Unsupported distribution: " ^ dist)
 
 let rec eval_conditional (env : Infer_env.t) (cond : Dist.exp) =
   match cond with
