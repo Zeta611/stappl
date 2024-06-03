@@ -13,15 +13,13 @@ let sample dist args =
   | "gamma", [ shape; scale ] -> gamma_rvs ~shape ~scale
   | _ -> raise (Unknown_distribution dist)
 
-(*type value = Int of int | Real of float | Bool of bool*)
-
-let rec eval (env : Infer_env.t) (exp : Det_exp.t) : float =
+let rec eval (env : Infer_ctx.t) (exp : Det_exp.t) : float =
   let ev2 f e1 e2 = f (eval env e1) (eval env e2) in
   match Det_exp.eval exp with
   | Int n -> float_of_int n
   | Real r -> r
   | Var name -> (
-      match Infer_env.find env ~name with
+      match Infer_ctx.find env ~name with
       | Some value -> value
       | None -> Random.float 1.0)
   | Add (e1, e2) -> ev2 ( +. ) e1 e2
@@ -37,7 +35,7 @@ let rec eval (env : Infer_env.t) (exp : Det_exp.t) : float =
   | Eq (e1, e2) -> if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
   | e -> failwith ("Unsupported expression " ^ Det_exp.to_string e)
 
-let rec eval_conditional (env : Infer_env.t) (cond : Dist.exp) =
+let rec eval_conditional (env : Infer_ctx.t) (cond : Dist.exp) =
   match cond with
   | Dist_obj { dist; args; _ } ->
       let evaluated_args = List.map args ~f:(eval env) in
@@ -47,40 +45,37 @@ let rec eval_conditional (env : Infer_env.t) (cond : Dist.exp) =
       else eval_conditional env alt
   | If_pred (_, conseq, One) -> eval_conditional env conseq
 
-let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
-    (num_iterations : int) (query : Det_exp.t) : float array =
+let gibbs_sampling ~(num_iterations : int)
+    ({ vertices; det_map; obs_map; _ } : Graph.t) (query : Det_exp.t) :
+    float array =
   let samples = Array.create ~len:num_iterations 0.0 in
-  let env =
-    ref
-      (List.fold initial_state ~init:Infer_env.empty
-         ~f:(fun env (name, value) ->
-           Infer_env.set env ~name ~value:(eval env value)))
-  in
+
+  (* Initialize the context with the observed values. Float conversion must succeed as observed variables do not contain free variables *)
+  let ctx = Infer_ctx.create () in
+  Map.iteri obs_map ~f:(fun ~key:name ~data:value ->
+      Infer_ctx.set ctx ~name ~value:(Det_exp.to_float value));
+
   for i = 0 to num_iterations - 1 do
-    List.iter g.vertices ~f:(fun v ->
-        if not (Map.mem g.obs_map v) then
+    List.iter vertices ~f:(fun v ->
+        if not (Map.mem obs_map v) then
           let new_value =
-            match Map.find g.det_map v with
-            | Some exp -> eval_conditional !env exp
+            match Map.find det_map v with
+            | Some exp -> eval_conditional ctx exp
             | None -> Random.float 1.0
           in
-          env := Infer_env.set !env ~name:v ~value:new_value);
-    samples.(i) <- eval !env query
+          Infer_ctx.set ctx ~name:v ~value:new_value);
+    samples.(i) <- eval ctx query
   done;
   samples
 
-let infer ~(filename : string) (graph : Graph.t) (query : Det_exp.t) : string =
-  let num_iterations = 1000 in
-  (* Use graph.obs_map in initialization*)
-  let initial_state =
-    List.map graph.vertices ~f:(fun v ->
-        match Map.find graph.obs_map v with
-        | Some obs_value -> (v, obs_value)
-        | None -> (v, Det_exp.Var v))
-  in
-  let samples = gibbs_sampling graph initial_state num_iterations query in
-  let open Owl_plplot in
+let infer ?(filename : string = "out") ?(num_iterations : int = 1000)
+    (graph : Graph.t) (query : Det_exp.t) : string =
+  let samples = gibbs_sampling graph ~num_iterations query in
+
+  let filename = String.chop_suffix_if_exists filename ~suffix:".stp" in
   let plot_path = filename ^ ".png" in
+
+  let open Owl_plplot in
   let h = Plot.create plot_path in
   Plot.set_title h "Query Distribution";
   let open Owl in
