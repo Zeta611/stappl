@@ -13,14 +13,14 @@ let gen_vertex =
     incr cnt;
     Printf.sprintf "X%d" !cnt
 
-let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
-  let sub' exp = sub exp x det_exp in
-  let s2 ctor e1 e2 = ctor (sub' e1) (sub' e2) in
-  let s1 ctor e = ctor (sub' e) in
+let rec sub (x : Id.t) (de : Det_exp.t) : Exp.t -> Exp.t =
+  let s1 ctor e = ctor ((x |-> de) e)
+  and s2 ctor e1 e2 = ctor ((x |-> de) e1) ((x |-> de) e2) in
+
   let open Exp in
-  match exp with
-  | Var y when Id.(x = y) -> Exp.of_det_exp det_exp
-  | Int _ | Real _ | Var _ | Bool _ -> exp
+  function
+  | Var y when Id.(x = y) -> Exp.of_det_exp de
+  | (Int _ | Real _ | Var _ | Bool _) as e -> e
   | Add (e1, e2) -> s2 add e1 e2
   | Radd (e1, e2) -> s2 radd e1 e2
   | Minus (e1, e2) -> s2 minus e1 e2
@@ -40,18 +40,21 @@ let rec sub (exp : Exp.t) (x : Id.t) (det_exp : Det_exp.t) : Exp.t =
   | Or (e1, e2) -> s2 or_ e1 e2
   | Seq (e1, e2) -> s2 seq e1 e2
   | Not e -> s1 not e
-  | List es -> List (List.map es ~f:sub')
-  | Record fs -> Record (List.map fs ~f:(fun (f, e) -> (f, sub' e)))
-  | Assign (y, e, body) when Id.(x = y) -> Assign (y, sub' e, body)
-  | Assign (y, e, body) when Core.not (Set.mem (Det_exp.fv det_exp) y) ->
-      Assign (y, sub' e, sub' body)
+  | List es -> List (List.map es ~f:(x |-> de))
+  | Record fs -> Record (List.map fs ~f:(fun (f, e) -> (f, (x |-> de) e)))
+  | Assign (y, e, body) when Id.(x = y) -> Assign (y, (x |-> de) e, body)
+  | Assign (y, e, body) when Core.not (Set.mem (Det_exp.fv de) y) ->
+      Assign (y, (x |-> de) e, (x |-> de) body)
   | Assign (y, e, body) ->
       let z = gen_sym () in
-      Assign (z, sub' e, sub' @@ sub body y (Det_exp.Var z))
-  | If (e_pred, e_con, e_alt) -> If (sub' e_pred, sub' e_con, sub' e_alt)
-  | Call (f, es) -> Call (f, List.map es ~f:sub')
+      Assign (z, (x |-> de) e, (x |-> de) @@ (y |-> Var z) body)
+  | If (e_pred, e_con, e_alt) ->
+      If ((x |-> de) e_pred, (x |-> de) e_con, (x |-> de) e_alt)
+  | Call (f, es) -> Call (f, List.map es ~f:(x |-> de))
   | Sample e -> s1 sample e
   | Observe (e1, e2) -> s2 observe e1 e2
+
+and ( |-> ) x de = sub x de
 
 let gather_functions (prog : program) : Env.t =
   List.fold prog.funs ~init:Env.empty ~f:(fun env f ->
@@ -116,7 +119,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
         (g1 @| g2 @| g', de2)
     | Assign (x, e, body) ->
         let g1, det_exp1 = compile' e in
-        let sub_body = sub body x det_exp1 in
+        let sub_body = (x |-> det_exp1) body in
         let g2, det_exp2 = compile' sub_body in
         (g1 @| g2, det_exp2)
     | If (e_pred, e_con, e_alt) -> (
@@ -143,7 +146,8 @@ let compile (program : program) : Graph.t * Det_exp.t =
             let param_det_pairs = List.zip_exn params det_exps in
             let sub_body =
               List.fold param_det_pairs ~init:body
-                ~f:(fun acc (param_name, det_exp) -> sub acc param_name det_exp)
+                ~f:(fun acc (param_name, det_exp) ->
+                  (param_name |-> det_exp) acc)
             in
             let g_body, det_exp_body = compile' sub_body in
             (g @| g_body, det_exp_body)

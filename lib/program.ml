@@ -89,7 +89,7 @@ module Det_exp = struct
     and evbb = evb bool in
 
     match exp with
-    | Int _ | Real _ | Var _ | Bool _ -> exp
+    | Int _ | Real _ | Bool _ | Var _ -> exp
     | Add (e1, e2) -> evii add ( + ) e1 e2
     | Radd (e1, e2) -> evrr radd ( +. ) e1 e2
     | Minus (e1, e2) -> evii minus ( - ) e1 e2
@@ -128,6 +128,21 @@ module Det_exp = struct
           (* TODO Return an evaluated distribution object *)
           Prim_call (f, ev_args)
         else Prim_call (f, ev_args)
+
+  let%expect_test _ =
+    let exp = Add (If (Bool true, Mult (Int 2, Int 3), Int 4), Int 5) in
+    print_s [%sexp (eval exp : t)];
+    [%expect {| (Int 11) |}]
+
+  let%expect_test _ =
+    let exp = Add (If (Bool false, Mult (Int 2, Int 3), Int 4), Int 5) in
+    print_s [%sexp (eval exp : t)];
+    [%expect {| (Int 9) |}]
+
+  let%expect_test _ =
+    let exp = Prim_call ("bernoulli", [ Real 0.5 ]) in
+    print_s [%sexp (eval exp : t)];
+    [%expect {| (Dist_obj (dist bernoulli) (var X) (args ((Real 0.5)))) |}]
 end
 
 module Exp = struct
@@ -177,6 +192,3 @@ end
 
 type fn = { name : Id.t; params : Id.t list; body : Exp.t } [@@deriving sexp]
 type program = { funs : fn list; exp : Exp.t } [@@deriving sexp]
-
-let pretty (prog : program) : string =
-  prog |> sexp_of_program |> Sexp.to_string_hum

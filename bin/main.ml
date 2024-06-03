@@ -39,12 +39,12 @@ let command : Command.t =
      fun () ->
        if pp then (
          printf "Pretty-print: %s\n" filename;
-         get_program filename |> Program.pretty |> print_endline);
+         print_s [%sexp (get_program filename : Program.program)]);
 
        if pp then printf "\n";
        printf "Compile: %s\n" filename;
-       get_program filename |> Compiler.compile |> fst |> Graph.pretty
-       |> print_endline;
+       let graph, _ = get_program filename |> Compiler.compile in
+       print_s [%sexp (graph : Graph.t)];
 
        if infer then (
          printf "\nInference: %s\n" filename;

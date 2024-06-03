@@ -35,4 +35,3 @@ let union g1 g2 =
   }
 
 let ( @| ) = union
-let pretty (graph : t) : string = graph |> sexp_of_t |> Sexp.to_string_hum
