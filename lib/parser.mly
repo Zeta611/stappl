@@ -6,7 +6,7 @@ open Program
 %token <float> REAL
 %token <string> ID
 %token IF THEN ELSE FUN LET IN
-%token PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NE LT GT AND OR NOT
+%token PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NE LT GT RLT RGT AND OR NOT
 %token SAMPLE OBSERVE
 %token LPAREN RPAREN LBRACK RBRACK LBRACE RBRACE
 %token COMMA COLON SEMICOLON
@@ -17,7 +17,7 @@ open Program
 %nonassoc ELSE
 %right OR
 %right AND
-%left EQ NE LT GT
+%left EQ NE LT GT RLT RGT
 %left PLUS MINUS RPLUS RMINUS
 %left MULT DIV RMULT RDIV
 %nonassoc NOT NEG RNEG
@@ -54,6 +54,8 @@ exp:
   | e1 = exp; NE; e2 = exp { Noteq (e1, e2) }
   | e1 = exp; LT; e2 = exp { Less (e1, e2) }
   | e1 = exp; GT; e2 = exp { Less (e2, e1) }
+  | e1 = exp; RLT; e2 = exp { Rless (e1, e2) }
+  | e1 = exp; RGT; e2 = exp { Rless (e2, e1) }
   | e1 = exp; AND; e2 = exp { And (e1, e2) }
   | e1 = exp; OR; e2 = exp { Or (e1, e2) }
   | e1 = exp; SEMICOLON; e2 = exp { Seq (e1, e2) }

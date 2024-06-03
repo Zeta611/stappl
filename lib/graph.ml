@@ -35,3 +35,11 @@ let union g1 g2 =
   }
 
 let ( @| ) = union
+
+let unobserved_vertices_pmdfs ({ vertices; pmdf_map; obs_map; _ } : t) :
+    (vertex * Dist.exp) list =
+  List.filter_map vertices ~f:(fun v ->
+      if Map.mem obs_map v then None
+      else
+        let pmdf = Map.find_exn pmdf_map v in
+        Some (v, pmdf))

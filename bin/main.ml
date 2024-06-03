@@ -50,6 +50,6 @@ let command : Command.t =
          printf "\nInference: %s\n" filename;
          let graph, query = get_program filename |> Compiler.compile in
          printf "Query result saved at %s\n"
-           (Inference_runner.infer ~filename graph query)))
+           (Evaluator.infer ~filename graph query)))
 
 let () = Command_unix.run ~version:"0.1.0" ~build_info:"STAPPL" command
