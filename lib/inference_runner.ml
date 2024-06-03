@@ -1,57 +1,49 @@
 open! Core
 open Program
 
-let sample_from_dist dist args =
+exception Unknown_distribution of string
+
+let sample dist args =
+  let open Owl.Stats in
   match (dist, args) with
   | "bernoulli", [ p ] -> if Float.(Random.float 1.0 < p) then 1.0 else 0.0
-  | "normal", [ mu; sigma ] -> Owl.Stats.gaussian_rvs ~mu ~sigma
-  | "uniform", [ a; b ] -> Owl.Stats.uniform_rvs ~a ~b
-  | "exponential", [ lambda ] -> Owl.Stats.exponential_rvs ~lambda
-  | "gamma", [ shape; scale ] -> Owl.Stats.gamma_rvs ~shape ~scale
-  | _ -> failwith ("Unsupported distribution: " ^ dist)
+  | "normal", [ mu; sigma ] -> gaussian_rvs ~mu ~sigma
+  | "uniform", [ a; b ] -> uniform_rvs ~a ~b
+  | "exponential", [ lambda ] -> exponential_rvs ~lambda
+  | "gamma", [ shape; scale ] -> gamma_rvs ~shape ~scale
+  | _ -> raise (Unknown_distribution dist)
 
-let eval_with_infer_env (env : Infer_env.t) (exp : Det_exp.t) : float =
-  let rec eval env exp =
-    let evi f e1 e2 = f (eval env e1) (eval env e2)
-    and evr f e1 e2 = f (eval env e1) (eval env e2) in
-    let simplified_exp = Det_exp.eval exp in
-    match simplified_exp with
-    | Det_exp.Int n -> float_of_int n
-    | Det_exp.Real r -> r
-    | Det_exp.Var name -> (
-        match Infer_env.find env ~name with
-        | Some value -> value
-        | None ->
-            Random.float 1.0
-            (*failwith (Printf.sprintf "Variable %s not found in environment in %s" x (Infer_env.to_string env)))*)
-        )
-    | Det_exp.Add (e1, e2) -> evi ( +. ) e1 e2
-    | Det_exp.Radd (e1, e2) -> evr ( +. ) e1 e2
-    | Det_exp.Minus (e1, e2) -> eval env e1 -. eval env e2
-    | Det_exp.Mult (e1, e2) -> eval env e1 *. eval env e2
-    | Det_exp.Div (e1, e2) -> eval env e1 /. eval env e2
-    | Det_exp.Prim_call (fn, args) ->
-        let evaled_args = List.map args ~f:(eval env) in
-        sample_from_dist fn evaled_args
-    | Det_exp.If (pred, conseq, alt) ->
-        if Float.(eval env pred <> 0.0) then eval env conseq else eval env alt
-    | Det_exp.Eq (e1, e2) ->
-        if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
-    | _ ->
-        failwith
-          (sprintf "Unsupported expression %s"
-             (Det_exp.to_string simplified_exp))
-  in
-  eval env exp
+(*type value = Int of int | Real of float | Bool of bool*)
+
+let rec eval (env : Infer_env.t) (exp : Det_exp.t) : float =
+  let ev2 f e1 e2 = f (eval env e1) (eval env e2) in
+  match Det_exp.eval exp with
+  | Int n -> float_of_int n
+  | Real r -> r
+  | Var name -> (
+      match Infer_env.find env ~name with
+      | Some value -> value
+      | None -> Random.float 1.0)
+  | Add (e1, e2) -> ev2 ( +. ) e1 e2
+  | Radd (e1, e2) -> ev2 ( +. ) e1 e2
+  | Minus (e1, e2) -> ev2 ( -. ) e1 e2
+  | Mult (e1, e2) -> ev2 ( *. ) e1 e2
+  | Div (e1, e2) -> ev2 ( /. ) e1 e2
+  | Prim_call (fn, args) ->
+      let evaled_args = List.map args ~f:(eval env) in
+      sample fn evaled_args
+  | If (pred, conseq, alt) ->
+      if Float.(eval env pred <> 0.0) then eval env conseq else eval env alt
+  | Eq (e1, e2) -> if Float.(eval env e1 = eval env e2) then 1.0 else 0.0
+  | e -> failwith ("Unsupported expression " ^ Det_exp.to_string e)
 
 let rec eval_conditional (env : Infer_env.t) (cond : Dist.exp) =
   match cond with
   | Dist_obj { dist; args; _ } ->
-      let evaluated_args = List.map args ~f:(eval_with_infer_env env) in
-      sample_from_dist dist evaluated_args
+      let evaluated_args = List.map args ~f:(eval env) in
+      sample dist evaluated_args
   | If_de (pred, conseq, alt) ->
-      if Float.(eval_with_infer_env env pred <> 0.0) then
-        eval_conditional env conseq
+      if Float.(eval env pred <> 0.0) then eval_conditional env conseq
       else eval_conditional env alt
   | If_pred (_, conseq, One) -> eval_conditional env conseq
 
@@ -62,7 +54,7 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
     ref
       (List.fold initial_state ~init:Infer_env.empty
          ~f:(fun env (name, value) ->
-           Infer_env.set env ~name ~value:(eval_with_infer_env env value)))
+           Infer_env.set env ~name ~value:(eval env value)))
   in
   for i = 0 to num_iterations - 1 do
     List.iter g.vertices ~f:(fun v ->
@@ -73,7 +65,7 @@ let gibbs_sampling (g : Graph.t) (initial_state : (Id.t * Det_exp.t) list)
             | None -> Random.float 1.0
           in
           env := Infer_env.set !env ~name:v ~value:new_value);
-    samples.(i) <- eval_with_infer_env !env query
+    samples.(i) <- eval !env query
   done;
   samples
 
