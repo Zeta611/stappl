@@ -45,32 +45,39 @@ let rec eval_conditional (env : Infer_ctx.t) (cond : Dist.exp) =
       else eval_conditional env alt
   | If_pred (_, conseq, One) -> eval_conditional env conseq
 
-let gibbs_sampling ~(num_iterations : int)
-    ({ vertices; det_map; obs_map; _ } : Graph.t) (query : Det_exp.t) :
+let gibbs_sampling ~(num_samples : int)
+    ({ vertices; pmdf_map; obs_map; _ } : Graph.t) (query : Det_exp.t) :
     float array =
-  let samples = Array.create ~len:num_iterations 0.0 in
-
-  (* Initialize the context with the observed values. Float conversion must succeed as observed variables do not contain free variables *)
+  (* Initialize the context with the observed values. Float conversion must
+     succeed as observed variables do not contain free variables *)
   let ctx = Infer_ctx.create () in
   Map.iteri obs_map ~f:(fun ~key:name ~data:value ->
       Infer_ctx.set ctx ~name ~value:(Det_exp.to_float value));
 
-  for i = 0 to num_iterations - 1 do
-    List.iter vertices ~f:(fun v ->
-        if not (Map.mem obs_map v) then
-          let new_value =
-            match Map.find det_map v with
-            | Some exp -> eval_conditional ctx exp
-            | None -> Random.float 1.0
-          in
-          Infer_ctx.set ctx ~name:v ~value:new_value);
-    samples.(i) <- eval ctx query
+  let unobserved_vertices =
+    List.filter_map vertices ~f:(fun v ->
+        if Map.mem obs_map v then None
+        else
+          let pmdf = Map.find_exn pmdf_map v in
+          Some (v, pmdf))
+  in
+
+  (* Adapted from gibbs_sampling of Owl *)
+  let a, b = (1000, 10) in
+  let num_iter = a + (b * num_samples) in
+  let samples = Array.create ~len:num_samples 0.0 in
+  for i = 1 to num_iter - 1 do
+    List.iter unobserved_vertices ~f:(fun (name, pmdf) ->
+        let value = eval_conditional ctx pmdf in
+        Infer_ctx.set ctx ~name ~value);
+    if i >= a && i mod b = 0 then samples.((i - a) / b) <- eval ctx query
   done;
+
   samples
 
-let infer ?(filename : string = "out") ?(num_iterations : int = 1000)
+let infer ?(filename : string = "out") ?(num_samples : int = 1000)
     (graph : Graph.t) (query : Det_exp.t) : string =
-  let samples = gibbs_sampling graph ~num_iterations query in
+  let samples = gibbs_sampling graph ~num_samples query in
 
   let filename = String.chop_suffix_if_exists filename ~suffix:".stp" in
   let plot_path = filename ^ ".png" in
@@ -79,7 +86,7 @@ let infer ?(filename : string = "out") ?(num_iterations : int = 1000)
   let h = Plot.create plot_path in
   Plot.set_title h "Query Distribution";
   let open Owl in
-  let samples_matrix = Mat.of_array samples 1 num_iterations in
+  let samples_matrix = Mat.of_array samples 1 num_samples in
   Plot.histogram ~h ~bin:50 samples_matrix;
   Plot.output h;
   plot_path

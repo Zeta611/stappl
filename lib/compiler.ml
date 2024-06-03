@@ -95,7 +95,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
-            det_map = Id.Map.singleton v f;
+            pmdf_map = Id.Map.singleton v f;
             obs_map = Id.Map.empty;
           }
         in
@@ -112,7 +112,7 @@ let compile (program : program) : Graph.t * Det_exp.t =
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-            det_map = Id.Map.singleton v f;
+            pmdf_map = Id.Map.singleton v f;
             obs_map = Id.Map.singleton v de2;
           }
         in

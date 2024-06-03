@@ -3,26 +3,26 @@ open Program
 
 type vertex = Id.t [@@deriving sexp]
 type arc = vertex * vertex [@@deriving sexp]
-type det_map = Dist.exp Id.Map.t [@@deriving sexp]
+type pmdf_map = Dist.exp Id.Map.t [@@deriving sexp]
 type obs_map = Det_exp.t Id.Map.t [@@deriving sexp]
 
 type t = {
   vertices : vertex list;
   arcs : arc list;
-  det_map : det_map;
+  pmdf_map : pmdf_map;
   obs_map : obs_map;
 }
 [@@deriving sexp]
 
 let empty =
-  { vertices = []; arcs = []; det_map = Id.Map.empty; obs_map = Id.Map.empty }
+  { vertices = []; arcs = []; pmdf_map = Id.Map.empty; obs_map = Id.Map.empty }
 
 let union g1 g2 =
   {
     vertices = g1.vertices @ g2.vertices;
     arcs = g1.arcs @ g2.arcs;
-    det_map =
-      Map.merge g1.det_map g2.det_map ~f:(fun ~key:_ v ->
+    pmdf_map =
+      Map.merge g1.pmdf_map g2.pmdf_map ~f:(fun ~key:_ v ->
           match v with
           | `Left det | `Right det -> Some det
           | `Both _ ->
