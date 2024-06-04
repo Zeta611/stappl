@@ -34,22 +34,30 @@ let command : Command.t =
        Language")
     (let%map_open.Command filename =
        anon (maybe_with_default "-" ("filename" %: Filename_unix.arg_type))
-     and pp = flag "-pp" no_arg ~doc:" Pretty print the program"
-     and infer = flag "-infer" no_arg ~doc:" Run inference on the program" in
+     and pp_opt = flag "-pp" no_arg ~doc:" Pretty print the program"
+     and graph_opt = flag "-graph" no_arg ~doc:" Print the compiled graph" in
      fun () ->
-       if pp then (
+       if pp_opt then (
          printf "Pretty-print: %s\n" filename;
          print_s [%sexp (get_program filename : Program.program)]);
 
-       if pp then printf "\n";
-       printf "Compile: %s\n" filename;
-       let graph, _ = get_program filename |> Compiler.compile in
-       print_s [%sexp (graph : Graph.t)];
-
-       if infer then (
-         printf "\nInference: %s\n" filename;
+       let graph_query = ref None in
+       if graph_opt then (
+         if pp_opt then printf "\n";
+         printf "Compile: %s\n" filename;
+         Out_channel.flush stdout;
          let graph, query = get_program filename |> Compiler.compile in
-         printf "Query result saved at %s\n"
-           (Evaluator.infer ~filename graph query)))
+         graph_query := Some (graph, query);
+         print_s [%sexp (graph : Graph.t)]);
+
+       if pp_opt || graph_opt then printf "\n";
+       printf "Inference: %s\n" filename;
+       Out_channel.flush stdout;
+       let graph, query =
+         !graph_query
+         |> Option.value ~default:(get_program filename |> Compiler.compile)
+       in
+       printf "Query result saved at %s\n"
+         (Evaluator.infer ~filename graph query))
 
 let () = Command_unix.run ~version:"0.1.0" ~build_info:"STAPPL" command
