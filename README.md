@@ -5,11 +5,13 @@ STAPPL is a compiler for the STAtically typed Probabilistic Programming Language
 ## How to Use
 
 Install the necessary OCaml packages:
+
 ```sh
 opam install . --deps-only
 ```
 
 You can run the program using the following command:
+
 ```sh
 dune exec -- stappl <program.stp>
 ```
@@ -17,48 +19,84 @@ dune exec -- stappl <program.stp>
 This will parse and compile the program, perform inference, and save the distribution plot of the final query variable as a PNG image file.
 
 ## Example
+
 Here's an example program and its components:
 
 ### Input Program
+
 ```ocaml
-# example.stp
-fun main() {
-  let z = sample(bernoulli(0.5)) in
-  let mu = (if (z = 0 - 0) then ~-.1.0 else 1.0) in
-  let d = normal(mu, 0.0 +. 1.0) in
-  let y = 0.5 in
-  observe(d, y);
-  z
+# student.stp
+fun determine_grade(difficult, smart) {
+  if difficult = 1 & smart = 1 then 0.8
+    else if difficult = 1 & smart = 0 then 0.3
+    else if difficult = 0 & smart = 1 then 0.95
+    else 0.5
 }
+
+let difficult = sample(bernoulli(0.4)) in
+let smart = sample(bernoulli(0.3)) in
+let grade = bernoulli(determine_grade(difficult, smart)) in
+let sat = bernoulli(
+  if smart = 1 then 0.95
+    else 0.2
+) in
+observe(grade, 0);
+observe(sat, 1);
+smart
 ```
+
 #### Pretty Print (-pp)
+
 ```scheme
 ((funs
-  (((name main) (params ())
+  (((name determine_grade) (params (difficult smart))
     (body
-     (Assign z (Sample (Call bernoulli ((Real 0.5))))
-      (Assign mu
-       (If (Eq (Var z) (Minus (Int 0) (Int 0))) (Rneg (Real 1)) (Real 1))
-       (Assign d (Call normal ((Var mu) (Radd (Real 0) (Real 1))))
-        (Assign y (Real 0.5) (Seq (Observe (Var d) (Var y)) (Var z))))))))))
- (exp (Call main ())))
+     (If (And (Eq (Var difficult) (Int 1)) (Eq (Var smart) (Int 1)))
+      (Real 0.8)
+      (If (And (Eq (Var difficult) (Int 1)) (Eq (Var smart) (Int 0)))
+       (Real 0.3)
+       (If (And (Eq (Var difficult) (Int 0)) (Eq (Var smart) (Int 1)))
+        (Real 0.95) (Real 0.5))))))))
+ (exp
+  (Assign difficult (Sample (Call bernoulli ((Real 0.4))))
+   (Assign smart (Sample (Call bernoulli ((Real 0.3))))
+    (Assign grade
+     (Call bernoulli ((Call determine_grade ((Var difficult) (Var smart)))))
+     (Assign sat
+      (Call bernoulli ((If (Eq (Var smart) (Int 1)) (Real 0.95) (Real 0.2))))
+      (Seq (Observe (Var grade) (Int 0))
+       (Seq (Observe (Var sat) (Int 1)) (Var smart)))))))))
 ```
-#### Graph Mode
+
+#### Graph Mode (-graph)
+
 ```scheme
-((vertices (X1 X2)) (arcs ((bernoulli X1) (X1 X2) (normal X2)))
- (det_map
-  ((X1 (Dist_obj (dist bernoulli) (var X1) (args ((Real 0.5)))))
-   (X2
+((vertices (X1 X2 X3 X4)) (arcs ((X1 X3) (X2 X3) (X2 X4)))
+ (pmdf_map
+  ((X1 (Dist_obj (dist bernoulli) (var X1) (args ((Real 0.4)))))
+   (X2 (Dist_obj (dist bernoulli) (var X2) (args ((Real 0.3)))))
+   (X3
     (If_pred Empty
-     (Dist_obj (dist normal) (var X2)
+     (Dist_obj (dist bernoulli) (var X3)
       (args
-       ((If (Eq (Var X1) (Minus (Int 0) (Int 0))) (Rneg (Real 1)) (Real 1))
-        (Radd (Real 0) (Real 1)))))
+       ((If (And (Eq (Var X1) (Int 1)) (Eq (Var X2) (Int 1))) (Real 0.8)
+         (If (And (Eq (Var X1) (Int 1)) (Eq (Var X2) (Int 0))) (Real 0.3)
+          (If (And (Eq (Var X1) (Int 0)) (Eq (Var X2) (Int 1))) (Real 0.95)
+           (Real 0.5)))))))
+     One))
+   (X4
+    (If_pred Empty
+     (Dist_obj (dist bernoulli) (var X4)
+      (args ((If (Eq (Var X2) (Int 1)) (Real 0.95) (Real 0.2)))))
      One))))
- (obs_map ((X2 (Real 0.5)))))
+ (obs_map ((X3 (Int 0)) (X4 (Int 1)))))
 ```
+
 #### Inference Mode
-The output will be the distribution of `z` and its plot saved as `example.png`.
+
+![student.png](./samples/student.png)
 
 ## License
+
 STAPPL is available under the MIT license. See the [LICENSE](LICENSE) file for more info.
+
