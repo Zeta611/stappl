@@ -6,6 +6,101 @@ module Id = struct
   include String
 end
 
+module Type_safe = struct
+  type real = float
+
+  type _ value =
+    | Int : int -> int value
+    | Real : real -> real value
+    | Bool : bool -> bool value
+
+  type _ ty = Tyi : int ty | Tyr : real ty | Tyb : bool ty
+  type ('a, 'b, 'c) bop = ('a ty * 'b ty * 'c ty) * ('a -> 'b -> 'c)
+  type ('a, 'b) uop = ('a ty * 'b ty) * ('a -> 'b)
+  type det = Det
+  type non_det = Non_det
+
+  type (_, _) exp =
+    | Value : 'a value -> ('a, _) exp
+    | Var : Id.t -> _ exp
+    | Bop : ('a, 'b, 'c) bop * ('a, 'd) exp * ('b, 'd) exp -> ('c, 'd) exp
+    | Uop : ('a, 'b) uop * ('a, 'd) exp -> ('b, 'd) exp
+    (* TODO: Add list and record constructors *)
+    (*| List : ('a, 'd) exp list -> ('a list, 'd) exp*)
+    (*| Record : ('k * 'v, 'd) exp list -> ('k * 'v, 'd) exp*)
+    | If : (bool, 'd) exp * ('a, 'd) exp * ('a, 'd) exp -> ('a, 'd) exp
+    | Let : Id.t * ('a, non_det) exp * ('b, non_det) exp -> ('b, non_det) exp
+    | Call : ('a -> 'b, 'd) exp * ('a, 'd) exp -> ('b, 'd) exp
+    | Sample : ('a, non_det) exp -> ('a, non_det) exp
+    | Observe : ('a, non_det) exp * ('a, non_det) exp -> ('a, non_det) exp
+
+  let rec fv : type a. (a, det) exp -> Id.Set.t = function
+    | Value _ -> Id.Set.empty
+    | Var x -> Id.Set.singleton x
+    | Bop (_, e1, e2) -> Id.(fv e1 @| fv e2)
+    | Uop (_, e) -> fv e
+    | If (e_pred, e_cons, e_alt) -> Id.(fv e_pred @| fv e_cons @| fv e_alt)
+    | Call (f, e) -> Id.(fv f @| fv e)
+
+  let bop (type a b c) (op : (a, b, c) bop) (v1 : a value) (v2 : b value) :
+      c value =
+    match (op, v1, v2) with
+    | ((Tyi, Tyi, Tyi), op), Int i1, Int i2 -> Int (op i1 i2)
+    | ((Tyi, Tyi, Tyr), op), Int i1, Int i2 -> Real (op i1 i2)
+    | ((Tyi, Tyi, Tyb), op), Int i1, Int i2 -> Bool (op i1 i2)
+    | ((Tyi, Tyr, Tyi), op), Int i, Real r -> Int (op i r)
+    | ((Tyi, Tyr, Tyr), op), Int i, Real r -> Real (op i r)
+    | ((Tyi, Tyr, Tyb), op), Int i, Real r -> Bool (op i r)
+    | ((Tyi, Tyb, Tyr), op), Int i, Bool b -> Real (op i b)
+    | ((Tyi, Tyb, Tyi), op), Int i, Bool b -> Int (op i b)
+    | ((Tyi, Tyb, Tyb), op), Int i, Bool b -> Bool (op i b)
+    | ((Tyr, Tyi, Tyi), op), Real r, Int i -> Int (op r i)
+    | ((Tyr, Tyi, Tyr), op), Real r, Int i -> Real (op r i)
+    | ((Tyr, Tyi, Tyb), op), Real r, Int i -> Bool (op r i)
+    | ((Tyr, Tyr, Tyi), op), Real r1, Real r2 -> Int (op r1 r2)
+    | ((Tyr, Tyr, Tyr), op), Real r1, Real r2 -> Real (op r1 r2)
+    | ((Tyr, Tyr, Tyb), op), Real r1, Real r2 -> Bool (op r1 r2)
+    | ((Tyr, Tyb, Tyi), op), Real r, Bool b -> Int (op r b)
+    | ((Tyr, Tyb, Tyr), op), Real r, Bool b -> Real (op r b)
+    | ((Tyr, Tyb, Tyb), op), Real r, Bool b -> Bool (op r b)
+    | ((Tyb, Tyi, Tyr), op), Bool b, Int i -> Real (op b i)
+    | ((Tyb, Tyi, Tyi), op), Bool b, Int i -> Int (op b i)
+    | ((Tyb, Tyi, Tyb), op), Bool b, Int i -> Bool (op b i)
+    | ((Tyb, Tyr, Tyi), op), Bool b, Real r -> Int (op b r)
+    | ((Tyb, Tyr, Tyr), op), Bool b, Real r -> Real (op b r)
+    | ((Tyb, Tyr, Tyb), op), Bool b, Real r -> Bool (op b r)
+    | ((Tyb, Tyb, Tyi), op), Bool b1, Bool b2 -> Int (op b1 b2)
+    | ((Tyb, Tyb, Tyr), op), Bool b1, Bool b2 -> Real (op b1 b2)
+    | ((Tyb, Tyb, Tyb), op), Bool b1, Bool b2 -> Bool (op b1 b2)
+
+  let uop (type a b) (op : (a, b) uop) (v : a value) : b value =
+    match (op, v) with
+    | ((Tyi, Tyi), op), Int i -> Int (op i)
+    | ((Tyi, Tyr), op), Int i -> Real (op i)
+    | ((Tyi, Tyb), op), Int i -> Bool (op i)
+    | ((Tyr, Tyi), op), Real r -> Int (op r)
+    | ((Tyr, Tyr), op), Real r -> Real (op r)
+    | ((Tyr, Tyb), op), Real r -> Bool (op r)
+    | ((Tyb, Tyi), op), Bool b -> Int (op b)
+    | ((Tyb, Tyr), op), Bool b -> Real (op b)
+    | ((Tyb, Tyb), op), Bool b -> Bool (op b)
+
+  let rec eval : type a. (a, det) exp -> (a, det) exp = function
+    | (Value _ | Var _) as e -> e
+    | Bop (op, e1, e2) -> (
+        match (eval e1, eval e2) with
+        | Value v1, Value v2 -> Value (bop op v1 v2)
+        | e1, e2 -> Bop (op, e1, e2))
+    | Uop (op, e) -> (
+        match eval e with Value v -> Value (uop op v) | e -> Uop (op, e))
+    | If (e_pred, e_cons, e_alt) -> (
+        match eval e_pred with
+        | Value (Bool true) -> eval e_cons
+        | Value (Bool false) -> eval e_alt
+        | e_pred -> If (e_pred, eval e_cons, eval e_alt))
+    | Call (f, e) -> Call (f, eval e)
+end
+
 module Det_exp = struct
   type t =
     | Int of int
