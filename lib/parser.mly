@@ -4,6 +4,7 @@ open Program
 
 %token <int> INT
 %token <float> REAL
+%token <bool> BOOL
 %token <string> ID
 %token IF THEN ELSE FUN LET IN
 %token PLUS MINUS NEG MULT DIV RPLUS RMINUS RNEG RMULT RDIV EQ NE LT GT RLT RGT AND OR NOT
@@ -36,6 +37,7 @@ exp:
   | LPAREN; e = exp; RPAREN { e }
 	| i = INT { Int i }
 	| r = REAL { Real r }
+	| b = BOOL { Bool b }
 	| x = ID { Var x }
   | f = ID; LPAREN; es = args; RPAREN { Call (f, es) }
   | IF; e_pred = exp; THEN; e_con = exp; ELSE; e_alt = exp { If (e_pred, e_con, e_alt) }

@@ -1,7 +1,7 @@
 fun main() {
   let x = sample(normal(0.0, 1.0)) in
   let y = bernoulli(if (x >. 1.0) then 0.9 else 0.1) in
-  observe(y, 1);
+  observe(y, true);
   x
 }
 

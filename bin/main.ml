@@ -37,6 +37,7 @@ let command : Command.t =
      and pp_opt = flag "-pp" no_arg ~doc:" Pretty print the program"
      and graph_opt = flag "-graph" no_arg ~doc:" Print the compiled graph" in
      fun () ->
+       let open Typedprog in
        if pp_opt then (
          printf "Pretty-print: %s\n" filename;
          print_s [%sexp (get_program filename : Program.program)]);
@@ -46,16 +47,16 @@ let command : Command.t =
          if pp_opt then printf "\n";
          printf "Compile: %s\n" filename;
          Out_channel.flush stdout;
-         let graph, query = get_program filename |> Compiler.compile in
+         let graph, query = get_program filename |> Compiler.compile_program in
          graph_query := Some (graph, query);
-         print_s [%sexp (graph : Graph.t)]);
-
+         print_s [%sexp (Printing.of_graph graph : Printing.graph)]);
        if pp_opt || graph_opt then printf "\n";
        printf "Inference: %s\n" filename;
        Out_channel.flush stdout;
        let graph, query =
          !graph_query
-         |> Option.value ~default:(get_program filename |> Compiler.compile)
+         |> Option.value
+              ~default:(get_program filename |> Compiler.compile_program)
        in
        printf "Query result saved at %s\n"
          (Evaluator.infer ~filename graph query))
