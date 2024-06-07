@@ -1,10 +1,11 @@
 open! Core
 open Program
+open Typed_tree
 
-type vertex = Id.t [@@deriving sexp]
-type arc = vertex * vertex [@@deriving sexp]
-type pmdf_map = Dist.exp Id.Map.t [@@deriving sexp]
-type obs_map = Det_exp.t Id.Map.t [@@deriving sexp]
+type vertex = Id.t
+type arc = vertex * vertex
+type pmdf_map = any_det Id.Map.t
+type obs_map = any_det Id.Map.t
 
 type t = {
   vertices : vertex list;
@@ -12,7 +13,6 @@ type t = {
   pmdf_map : pmdf_map;
   obs_map : obs_map;
 }
-[@@deriving sexp]
 
 let empty =
   { vertices = []; arcs = []; pmdf_map = Id.Map.empty; obs_map = Id.Map.empty }
@@ -37,7 +37,7 @@ let union g1 g2 =
 let ( @| ) = union
 
 let unobserved_vertices_pmdfs ({ vertices; pmdf_map; obs_map; _ } : t) :
-    (vertex * Dist.exp) list =
+    (vertex * any_det) list =
   List.filter_map vertices ~f:(fun v ->
       if Map.mem obs_map v then None
       else

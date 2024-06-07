@@ -37,7 +37,6 @@ let command : Command.t =
      and pp_opt = flag "-pp" no_arg ~doc:" Pretty print the program"
      and graph_opt = flag "-graph" no_arg ~doc:" Print the compiled graph" in
      fun () ->
-       let open Typed_tree in
        if pp_opt then (
          printf "Pretty-print: %s\n" filename;
          print_s [%sexp (get_program filename : Program.program)]);
