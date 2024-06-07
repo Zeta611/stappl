@@ -1,5 +1,5 @@
 %{
-open Program
+open Parse_tree
 %}
 
 %token <int> INT
@@ -23,7 +23,7 @@ open Program
 %left MULT DIV RMULT RDIV
 %nonassoc NOT NEG RNEG
 
-%start <Program.program> program
+%start <program> program
 %%
 
 program:

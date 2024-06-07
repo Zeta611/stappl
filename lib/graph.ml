@@ -1,5 +1,4 @@
 open! Core
-open Program
 open Typed_tree
 
 type vertex = Id.t

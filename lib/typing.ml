@@ -1,5 +1,4 @@
 open! Core
-open Program
 open Typed_tree
 
 let gen_args =
@@ -9,7 +8,7 @@ let gen_args =
     incr cnt;
     arg
 
-let rec subst (env : Id.t Id.Map.t) (e : Exp.t) =
+let rec subst (env : Id.t Id.Map.t) (e : Parse_tree.exp) =
   let subst' = subst env in
   match e with
   | Int _ | Real _ | Bool _ -> e
@@ -47,8 +46,9 @@ let rec subst (env : Id.t Id.Map.t) (e : Exp.t) =
   | List _ -> failwith "List not implemented"
   | Record _ -> failwith "Record not implemented"
 
-let rec inline_one (fn : fn) (prog : program) =
-  let rec inline_exp scope (e : Exp.t) =
+let rec inline_one (fn : Parse_tree.fn) (prog : Parse_tree.program) =
+  let open Parse_tree in
+  let rec inline_exp scope (e : exp) =
     let inline_exp' = inline_exp scope in
     match e with
     | Int _ | Real _ | Bool _ -> e
@@ -91,7 +91,7 @@ let rec inline_one (fn : fn) (prog : program) =
                 Map.set acc ~key:k ~data:v)
           in
           List.fold kvpair ~init:(subst env fn.body) ~f:(fun acc (_, v, arg) ->
-              Exp.Assign (v, arg, acc))
+              Assign (v, arg, acc))
         else Call (f, args)
     | Sample e -> Sample (inline_exp' e)
     | Observe (d, e) -> Observe (inline_exp' d, inline_exp' e)
@@ -109,7 +109,8 @@ let rec inline_one (fn : fn) (prog : program) =
         let { funs; exp } = inline_one fn { funs; exp } in
         { funs = { name; params; body } :: funs; exp }
 
-let rec inline (prog : program) =
+let rec inline (prog : Parse_tree.program) =
+  let open Parse_tree in
   let { funs; exp } = prog in
   match funs with
   | [] -> exp
@@ -140,7 +141,7 @@ let get_dist (name : Id.t) : any_dist =
         }
   | _ -> failwith "Unknown primitive function"
 
-let rec check : type a. tyenv -> Exp.t -> a ty -> (a, non_det) texp =
+let rec check : type a. tyenv -> Parse_tree.exp -> a ty -> (a, non_det) texp =
  fun tyenv e ty ->
   match e with
   | Var x -> (
@@ -279,7 +280,7 @@ and check_uop :
     (arg -> ret) ->
     arg ty ->
     ret ty ->
-    Exp.t ->
+    Parse_tree.exp ->
     (ret, non_det) texp =
  fun tyenv name f t ty e ->
   let te = check tyenv e t in
@@ -293,15 +294,16 @@ and check_bop :
     arg1 ty ->
     arg2 ty ->
     ret ty ->
-    Exp.t ->
-    Exp.t ->
+    Parse_tree.exp ->
+    Parse_tree.exp ->
     (ret, non_det) texp =
  fun tyenv name f t1 t2 ty e1 e2 ->
   let te1 = check tyenv e1 t1 in
   let te2 = check tyenv e2 t2 in
   { ty; exp = Bop ({ name; f }, te1, te2) }
 
-and check_args : type a. tyenv -> Exp.t list -> a params -> (a, non_det) args =
+and check_args :
+    type a. tyenv -> Parse_tree.exp list -> a params -> (a, non_det) args =
  fun tyenv el tyl ->
   match tyl with
   | [] -> []
@@ -313,7 +315,7 @@ and check_args : type a. tyenv -> Exp.t list -> a params -> (a, non_det) args =
           let args = check_args tyenv args argtys in
           arg :: args)
 
-and convert (tyenv : tyenv) (e : Exp.t) : any_ndet =
+and convert (tyenv : tyenv) (e : Parse_tree.exp) : any_ndet =
   match e with
   | Var x -> (
       match Map.find tyenv x with

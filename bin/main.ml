@@ -7,10 +7,10 @@ let print_position (outx : Out_channel.t) (lexbuf : Lexing.lexbuf) : unit =
   fprintf outx "%s:%d:%d" pos.pos_fname pos.pos_lnum
     (pos.pos_cnum - pos.pos_bol + 1)
 
-let parse_with_error (lexbuf : Lexing.lexbuf) : Program.program =
+let parse_with_error (lexbuf : Lexing.lexbuf) : Parse_tree.program =
   Parser.program Lexer.read lexbuf
 
-let get_program (filename : string) : Program.program =
+let get_program (filename : string) : Parse_tree.program =
   let filename, inx =
     if String.(filename = "-") then ("<stdin>", In_channel.stdin)
     else (filename, In_channel.create filename)
@@ -39,7 +39,7 @@ let command : Command.t =
      fun () ->
        if pp_opt then (
          printf "Pretty-print: %s\n" filename;
-         print_s [%sexp (get_program filename : Program.program)]);
+         print_s [%sexp (get_program filename : Parse_tree.program)]);
 
        let graph_query = ref None in
        if graph_opt then (

@@ -1,5 +1,5 @@
 open! Core
-open Program
+open Parse_tree
 open Typed_tree
 
 type env = any_det Id.Map.t

@@ -1,5 +1,4 @@
 open! Core
-open Program
 
 type real = float
 type _ ty = Tyi : int ty | Tyr : real ty | Tyb : bool ty
