@@ -1,6 +1,8 @@
 open! Core
 open Typed_tree
 
+type tyenv = some_ty Id.Map.t
+
 let gen_args =
   let cnt = ref 0 in
   fun () ->
@@ -116,11 +118,11 @@ let rec inline (prog : Parse_tree.program) =
   | [] -> exp
   | fn :: funs -> inline (inline_one fn { funs; exp })
 
-let get_dist (name : Id.t) : any_dist =
+let get_dist (name : Id.t) : some_dist =
   let open Owl.Stats in
   match name with
   | "bernoulli" ->
-      Any
+      Ex
         {
           ret = Tyb;
           name = "bernoulli";
@@ -130,7 +132,7 @@ let get_dist (name : Id.t) : any_dist =
             (fun [ (Tyr, p) ] b -> binomial_logpdf ~p ~n:1 (Bool.to_int b));
         }
   | "normal" ->
-      Any
+      Ex
         {
           ret = Tyr;
           name = "normal";
@@ -147,7 +149,7 @@ let rec check : type a. tyenv -> Parse_tree.exp -> a ty -> (a, non_det) texp =
   | Var x -> (
       match Map.find tyenv x with
       | None -> failwith ("Unbound variable " ^ x)
-      | Some (Any t) -> (
+      | Some (Ex t) -> (
           match (t, ty) with
           | Tyi, Tyi -> { ty; exp = Var x }
           | Tyr, Tyr -> { ty; exp = Var x }
@@ -238,20 +240,20 @@ let rec check : type a. tyenv -> Parse_tree.exp -> a ty -> (a, non_det) texp =
       | Tyb -> check_uop tyenv "!" not Tyb Tyb e
       | _ -> failwith "Expected something other than bool")
   | Observe (d, e) -> (
-      let (Any td) = convert tyenv d in
-      let (Any te) = convert tyenv e in
+      let (Ex td) = convert tyenv d in
+      let (Ex te) = convert tyenv e in
       match (ty, td.ty, te.ty) with
       | Tyi, Tyi, Tyi -> { ty; exp = Observe (td, te) }
       | Tyr, Tyr, Tyr -> { ty; exp = Observe (td, te) }
       | Tyb, Tyb, Tyb -> { ty; exp = Observe (td, te) }
       | _, _, _ -> failwith "Argument to observe has different types")
   | Seq (e1, e2) ->
-      let (Any te1) = convert tyenv e1 in
+      let (Ex te1) = convert tyenv e1 in
       let te2 = check tyenv e2 ty in
       { ty; exp = Let ("_", te1, te2) }
   | Assign (x, e1, e2) ->
-      let (Any ({ ty = ty1; exp = _ } as te1)) = convert tyenv e1 in
-      let tyenv = Map.set tyenv ~key:x ~data:(Any ty1) in
+      let (Ex ({ ty = ty1; exp = _ } as te1)) = convert tyenv e1 in
+      let tyenv = Map.set tyenv ~key:x ~data:(Ex ty1) in
       let te2 = check tyenv e2 ty in
       { ty; exp = Let (x, te1, te2) }
   | If (pred, conseq, alt) ->
@@ -260,7 +262,7 @@ let rec check : type a. tyenv -> Parse_tree.exp -> a ty -> (a, non_det) texp =
       let talt = check tyenv alt ty in
       { ty; exp = If (tpred, tconseq, talt) }
   | Call (prim, args) -> (
-      let (Any dist) = get_dist prim in
+      let (Ex dist) = get_dist prim in
       let args = check_args tyenv args dist.params in
       match (dist.ret, ty) with
       | Tyi, Tyi -> { ty; exp = Call (dist, args) }
@@ -315,50 +317,50 @@ and check_args :
           let args = check_args tyenv args argtys in
           arg :: args)
 
-and convert (tyenv : tyenv) (e : Parse_tree.exp) : any_ndet =
+and convert (tyenv : tyenv) (e : Parse_tree.exp) : some_ndet =
   match e with
   | Var x -> (
       match Map.find tyenv x with
       | None -> failwith ("Unbound variable " ^ x)
-      | Some (Any t) -> Any { ty = t; exp = Var x })
-  | Int _ | Add _ | Minus _ | Neg _ | Mult _ | Div _ -> Any (check tyenv e Tyi)
+      | Some (Ex t) -> Ex { ty = t; exp = Var x })
+  | Int _ | Add _ | Minus _ | Neg _ | Mult _ | Div _ -> Ex (check tyenv e Tyi)
   | Real _ | Radd _ | Rminus _ | Rneg _ | Rmult _ | Rdiv _ ->
-      Any (check tyenv e Tyr)
+      Ex (check tyenv e Tyr)
   | Bool _ | Eq _ | Req _ | Noteq _ | Less _ | Rless _ | And _ | Or _ | Not _ ->
-      Any (check tyenv e Tyb)
+      Ex (check tyenv e Tyb)
   | Observe (d, e) -> (
-      let (Any td) = convert tyenv d in
-      let (Any te) = convert tyenv e in
+      let (Ex td) = convert tyenv d in
+      let (Ex te) = convert tyenv e in
       match (td.ty, te.ty) with
-      | Tyi, Tyi -> Any { ty = Tyi; exp = Observe (td, te) }
-      | Tyr, Tyr -> Any { ty = Tyr; exp = Observe (td, te) }
-      | Tyb, Tyb -> Any { ty = Tyb; exp = Observe (td, te) }
+      | Tyi, Tyi -> Ex { ty = Tyi; exp = Observe (td, te) }
+      | Tyr, Tyr -> Ex { ty = Tyr; exp = Observe (td, te) }
+      | Tyb, Tyb -> Ex { ty = Tyb; exp = Observe (td, te) }
       | _, _ -> failwith "Argument to observe has different types.")
   | Seq (e1, e2) ->
-      let (Any te1) = convert tyenv e1 in
-      let (Any ({ ty = ty2; exp = _ } as te2)) = convert tyenv e2 in
-      Any { ty = ty2; exp = Let ("_", te1, te2) }
+      let (Ex te1) = convert tyenv e1 in
+      let (Ex ({ ty = ty2; exp = _ } as te2)) = convert tyenv e2 in
+      Ex { ty = ty2; exp = Let ("_", te1, te2) }
   | Assign (x, e1, e2) ->
-      let (Any ({ ty = ty1; exp = _ } as te1)) = convert tyenv e1 in
-      let tyenv = Map.set tyenv ~key:x ~data:(Any ty1) in
-      let (Any ({ ty = ty2; exp = _ } as te2)) = convert tyenv e2 in
-      Any { ty = ty2; exp = Let (x, te1, te2) }
+      let (Ex ({ ty = ty1; exp = _ } as te1)) = convert tyenv e1 in
+      let tyenv = Map.set tyenv ~key:x ~data:(Ex ty1) in
+      let (Ex ({ ty = ty2; exp = _ } as te2)) = convert tyenv e2 in
+      Ex { ty = ty2; exp = Let (x, te1, te2) }
   | If (pred, conseq, alt) -> (
       let tpred = check tyenv pred Tyb in
-      let (Any tconseq) = convert tyenv conseq in
-      let (Any talt) = convert tyenv alt in
+      let (Ex tconseq) = convert tyenv conseq in
+      let (Ex talt) = convert tyenv alt in
       match (tconseq.ty, talt.ty) with
-      | Tyi, Tyi -> Any { ty = Tyi; exp = If (tpred, tconseq, talt) }
-      | Tyr, Tyr -> Any { ty = Tyr; exp = If (tpred, tconseq, talt) }
-      | Tyb, Tyb -> Any { ty = Tyb; exp = If (tpred, tconseq, talt) }
+      | Tyi, Tyi -> Ex { ty = Tyi; exp = If (tpred, tconseq, talt) }
+      | Tyr, Tyr -> Ex { ty = Tyr; exp = If (tpred, tconseq, talt) }
+      | Tyb, Tyb -> Ex { ty = Tyb; exp = If (tpred, tconseq, talt) }
       | _, _ -> failwith "Branches of an if statement must return the same type"
       )
   | Call (prim, args) ->
-      let (Any dist) = get_dist prim in
+      let (Ex dist) = get_dist prim in
       let args = check_args tyenv args dist.params in
-      Any { ty = dist.ret; exp = Call (dist, args) }
+      Ex { ty = dist.ret; exp = Call (dist, args) }
   | Sample e ->
-      let (Any te) = convert tyenv e in
-      Any { ty = te.ty; exp = Sample te }
+      let (Ex te) = convert tyenv e in
+      Ex { ty = te.ty; exp = Sample te }
   | List _ -> failwith "List not implemented"
   | Record _ -> failwith "Record not implemented"

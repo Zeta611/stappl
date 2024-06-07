@@ -58,10 +58,9 @@ and fv_args : type a. (a, det) args -> Id.Set.t = function
   | [] -> Id.Set.empty
   | { exp; _ } :: es -> Id.(fv exp @| fv_args es)
 
-type any_ndet = Any : (_, non_det) texp -> any_ndet
-type any_det = Any : (_, det) texp -> any_det
-type any_ty = Any : _ ty -> any_ty
-type any_params = Any : _ params -> any_params
-type any_v = Any : ('a ty * 'a) -> any_v
-type any_dist = Any : _ dist -> any_dist
-type tyenv = any_ty Id.Map.t
+type some_ndet = Ex : (_, non_det) texp -> some_ndet
+type some_det = Ex : (_, det) texp -> some_det
+type some_ty = Ex : _ ty -> some_ty
+type some_params = Ex : _ params -> some_params
+type some_v = Ex : ('a ty * 'a) -> some_v
+type some_dist = Ex : _ dist -> some_dist

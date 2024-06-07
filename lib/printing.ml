@@ -49,8 +49,8 @@ let of_graph ({ vertices; arcs; pmdf_map; obs_map } : Graph.t) : graph =
   {
     vertices;
     arcs;
-    pmdf_map = Map.map pmdf_map ~f:(fun (Any e) -> of_exp e);
-    obs_map = Map.map obs_map ~f:(fun (Any e) -> of_exp e);
+    pmdf_map = Map.map pmdf_map ~f:(fun (Ex e) -> of_exp e);
+    obs_map = Map.map obs_map ~f:(fun (Ex e) -> of_exp e);
   }
 
-let to_string (Any e : any_det) = e |> of_exp |> sexp_of_t |> Sexp.to_string_hum
+let to_string (Ex e : some_det) = e |> of_exp |> sexp_of_t |> Sexp.to_string_hum

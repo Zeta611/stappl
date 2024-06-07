@@ -2,7 +2,7 @@ open! Core
 open Parse_tree
 open Typed_tree
 
-type env = any_det Id.Map.t
+type env = some_det Id.Map.t
 
 let gen_vertex =
   let cnt = ref 0 in
@@ -78,7 +78,7 @@ let rec compile :
   match exp with
   | Value v -> (Graph.empty, { ty; exp = Value v })
   | Var x -> (
-      let (Any { ty = tx; exp }) = Map.find_exn env x in
+      let (Ex { ty = tx; exp }) = Map.find_exn env x in
       match (tx, ty) with
       | Tyi, Tyi -> (Graph.empty, { ty; exp })
       | Tyr, Tyr -> (Graph.empty, { ty; exp })
@@ -118,7 +118,7 @@ let rec compile :
   | Let (x, e, body) ->
       let g1, det_exp1 = compile env pred e in
       let g2, det_exp2 =
-        compile (Map.set env ~key:x ~data:(Any det_exp1)) pred body
+        compile (Map.set env ~key:x ~data:(Ex det_exp1)) pred body
       in
       Graph.(g1 @| g2, det_exp2)
   | Call (f, args) ->
@@ -128,7 +128,7 @@ let rec compile :
       let g, de = compile env pred e in
       let v = gen_vertex () in
       let de_fvs = fv de.exp in
-      let f : any_det = Any (score de v) in
+      let f : some_det = Ex (score de v) in
       let g' =
         Graph.
           {
@@ -180,8 +180,8 @@ let rec compile :
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-            pmdf_map = Id.Map.singleton v (Any f : any_det);
-            obs_map = Id.Map.singleton v (Any de2 : any_det);
+            pmdf_map = Id.Map.singleton v (Ex f : some_det);
+            obs_map = Id.Map.singleton v (Ex de2 : some_det);
           }
       in
       Graph.(g1 @| g2 @| g', de2)
@@ -197,8 +197,8 @@ and compile_args :
       let g', args = compile_args env pred args in
       Graph.(g @| g', arg :: args)
 
-let compile_program (prog : program) : Graph.t * any_det =
+let compile_program (prog : program) : Graph.t * some_det =
   let open Typing in
-  let (Any e) = convert Id.Map.empty (inline prog) in
+  let (Ex e) = convert Id.Map.empty (inline prog) in
   let g, e = compile Id.Map.empty { ty = Tyb; exp = Value true } e in
-  (g, Any e)
+  (g, Ex e)
