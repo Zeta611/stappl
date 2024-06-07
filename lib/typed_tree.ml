@@ -3,6 +3,11 @@ open! Core
 type real = float
 type _ ty = Tyi : int ty | Tyr : real ty | Tyb : bool ty
 
+let string_of_ty : type a. a ty -> string = function
+  | Tyi -> "int"
+  | Tyr -> "real"
+  | Tyb -> "bool"
+
 type _ params =
   | [] : unit params
   | ( :: ) : 'a ty * 'b params -> ('a * 'b) params
