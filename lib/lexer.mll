@@ -15,6 +15,8 @@ let keywords =
       ("in", IN);
       ("sample", SAMPLE);
       ("observe", OBSERVE);
+      ("true", BOOL true);
+      ("false", BOOL false);
     ]
 }
 
