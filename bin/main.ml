@@ -51,7 +51,7 @@ let command : Command.t =
          Out_channel.flush stdout;
          let graph, query = get_program filename |> Compiler.compile_program in
          graph_query := Some (graph, query);
-         print_s [%sexp (Printing.of_graph graph : Printing.graph)]);
+         print_s Graph.Erased.([%sexp (of_graph graph : t)]));
 
        if pp_opt || graph_opt then printf "\n";
        printf "Inference: %s\n" filename;

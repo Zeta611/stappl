@@ -2,7 +2,7 @@ open! Core
 open Parse_tree
 open Typed_tree
 
-type env = some_det Id.Map.t
+type env = some_det_texp Id.Map.t
 
 let gen_vertex =
   let cnt = ref 0 in
@@ -54,8 +54,7 @@ let rec peval : type a. (a, det) texp -> (a, det) texp =
     | If_pred (p, de) -> (
         let p = peval_pred p and de = peval de in
         match p with (* TODO: *) _ -> If_pred (p, de))
-    | If_con de -> If_con (peval de)
-    | If_alt de -> If_alt (peval de)
+    | If_just de -> If_just (peval de)
   in
 
   { ty; exp }
@@ -96,8 +95,8 @@ let rec score : type a. (a, det) texp -> (a, det) texp = function
   | _ -> raise Score_invalid_arguments
 
 let rec compile :
-    type a s.
-    env:env -> ?pred:pred -> (a, non_det) texp -> Graph.t * (a, det) texp =
+    type a s. env:env -> ?pred:pred -> (a, ndet) texp -> Graph.t * (a, det) texp
+    =
  fun ~env ?(pred = Empty) { ty; exp } ->
   match exp with
   | Value _ as exp -> (Graph.empty, { ty; exp })
@@ -132,8 +131,8 @@ let rec compile :
       let g3, de_alt = compile ~env ~pred:pred_alt e_alt in
       let g = Graph.(g1 @| g2 @| g3) in
       match pred_con with
-      | True -> (g, { ty; exp = If_con de_con })
-      | False -> (g, { ty; exp = If_alt de_alt })
+      | True -> (g, { ty; exp = If_just de_con })
+      | False -> (g, { ty; exp = If_just de_alt })
       | _ -> (g, { ty; exp = If (de_pred, de_con, de_alt) }))
   | Let (x, e, body) ->
       let g1, det_exp1 = compile ~env ~pred e in
@@ -154,7 +153,7 @@ let rec compile :
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
-            pmdf_map = Id.Map.singleton v (Ex f : some_dist_texp);
+            pmdf_map = Id.Map.singleton v (Ex f : some_dist_det_texp);
             obs_map = Id.Map.empty;
           }
       in
@@ -173,14 +172,14 @@ let rec compile :
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-            pmdf_map = Id.Map.singleton v (Ex f : some_dist_texp);
-            obs_map = Id.Map.singleton v (Ex de2 : some_dat_texp);
+            pmdf_map = Id.Map.singleton v (Ex f : some_dist_det_texp);
+            obs_map = Id.Map.singleton v (Ex de2 : some_val_det_texp);
           }
       in
       Graph.(g1 @| g2 @| g', { ty = Dat_ty (Tyu, Val); exp = Value () })
 
 and compile_args :
-    type a. env -> pred -> (a, non_det) args -> Graph.t * (a, det) args =
+    type a. env -> pred -> (a, ndet) args -> Graph.t * (a, det) args =
  fun env pred args ->
   match args with
   | [] -> (Graph.empty, [])
@@ -191,7 +190,7 @@ and compile_args :
 
 exception Query_not_found
 
-let compile_program (prog : program) : Graph.t * some_rv_texp =
+let compile_program (prog : program) : Graph.t * some_rv_det_texp =
   Logs.debug (fun m ->
       m "Inlining program %a" Sexp.pp_hum [%sexp (prog : Parse_tree.program)]);
   let exp = Preprocessor.inline prog in

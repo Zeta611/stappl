@@ -27,8 +27,7 @@ let rec eval_dat : type a s. Ctx.t -> ((a, s) dat_ty, det) texp -> a =
   | Uop ({ op; _ }, te) -> op (eval_dat ctx te)
   | If (te_pred, te_cons, te_alt) ->
       if eval_dat ctx te_pred then eval_dat ctx te_cons else eval_dat ctx te_alt
-  | If_con te -> eval_dat ctx te
-  | If_alt te -> eval_dat ctx te
+  | If_just te -> eval_dat ctx te
 
 and eval_dist : type a. Ctx.t -> (a dist_ty, det) texp -> a =
  fun ctx { ty = Dist_ty dty as ty; exp } ->
@@ -81,7 +80,7 @@ let rec eval_pmdf :
 
 (* TODO: Remove existential wrapper *)
 let gibbs_sampling ~(num_samples : int) (graph : Graph.t)
-    (Ex query : some_rv_texp) : float array =
+    (Ex query : some_rv_det_texp) : float array =
   (* Initialize the context with the observed values. Float conversion must
      succeed as observed variables do not contain free variables *)
   let default : type a. a dty -> a = function
@@ -154,7 +153,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t)
   samples
 
 let infer ?(filename : string = "out") ?(num_samples : int = 100_000)
-    (graph : Graph.t) (query : some_rv_texp) : string =
+    (graph : Graph.t) (query : some_rv_det_texp) : string =
   let samples = gibbs_sampling graph ~num_samples query in
 
   let filename = String.chop_suffix_if_exists filename ~suffix:".stp" in
@@ -162,7 +161,8 @@ let infer ?(filename : string = "out") ?(num_samples : int = 100_000)
 
   let open Owl_plplot in
   let h = Plot.create plot_path in
-  Plot.set_title h (Printing.of_rv query);
+  Plot.set_title h
+    Typed_tree.Erased.([%sexp (of_rv query : exp)] |> Sexp.to_string);
   let mat = Owl.Mat.of_array samples 1 num_samples in
   Plot.histogram ~h ~bin:50 mat;
   Plot.output h;

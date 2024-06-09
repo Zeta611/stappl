@@ -49,11 +49,11 @@ let get_uop : type a b. Parse_tree.exp * (a dty * b dty) -> (a, b) uop =
 
 let unify_branches :
     type a_con a_alt s_pred s_con s_alt.
-    ((bool, s_pred) dat_ty, non_det) texp ->
-    ((a_con, s_con) dat_ty, non_det) texp ->
-    ((a_alt, s_alt) dat_ty, non_det) texp ->
+    ((bool, s_pred) dat_ty, ndet) texp ->
+    ((a_con, s_con) dat_ty, ndet) texp ->
+    ((a_alt, s_alt) dat_ty, ndet) texp ->
     (a_con, a_alt) eq ->
-    a_con some_dat_non_det_texp =
+    a_con some_dat_ndet_texp1 =
  fun te_pred te_con te_alt Refl ->
   match te_pred.ty with
   | Dat_ty (Tyb, Val) -> (
@@ -126,7 +126,7 @@ let unify_branches :
           Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
 
 let rec check_dat :
-    type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_non_det_texp =
+    type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_ndet_texp1 =
  fun tyenv (exp, dty) ->
   Logs.debug (fun m ->
       m "Checking exp (%a : %a)" Sexp.pp_hum
@@ -292,7 +292,7 @@ and check_uop :
     (a, ret) uop ->
     Parse_tree.exp * a dty ->
     ret dty ->
-    ret some_dat_non_det_texp =
+    ret some_dat_ndet_texp1 =
  fun tyenv uop (e, t) tret ->
   let (Ex ({ ty = Dat_ty (_, s); _ } as te)) = check_dat tyenv (e, t) in
   match s with
@@ -306,7 +306,7 @@ and check_bop :
     Parse_tree.exp * a1 dty ->
     Parse_tree.exp * a2 dty ->
     ret dty ->
-    ret some_dat_non_det_texp =
+    ret some_dat_ndet_texp1 =
  fun tyenv bop (e1, t1) (e2, t2) tret ->
   let (Ex ({ ty = Dat_ty (_, s1); _ } as te1)) = check_dat tyenv (e1, t1) in
   let (Ex ({ ty = Dat_ty (_, s2); _ } as te2)) = check_dat tyenv (e2, t2) in
@@ -315,8 +315,7 @@ and check_bop :
   | _, _ -> Ex { ty = Dat_ty (tret, Rv); exp = Bop (bop, te1, te2) }
 
 and check_args :
-    type a. tyenv -> Id.t -> Parse_tree.exp list * a params -> (a, non_det) args
-    =
+    type a. tyenv -> Id.t -> Parse_tree.exp list * a params -> (a, ndet) args =
  fun tyenv prim (es, dtys) ->
   match dtys with
   | [] -> []
@@ -328,8 +327,8 @@ and check_args :
           let args = check_args tyenv prim (args, dtys) in
           arg :: args)
 
-and check_dist : type a. tyenv -> Parse_tree.exp * a dty -> a dist_non_det_texp
-    =
+and check_dist :
+    type a. tyenv -> Parse_tree.exp * a dty -> (a dist_ty, ndet) texp =
  fun tyenv (exp, dty) ->
   Logs.debug (fun m ->
       m "Checking exp (%a : %a dist)" Sexp.pp_hum
@@ -381,7 +380,7 @@ and check_dist : type a. tyenv -> Parse_tree.exp * a dty -> a dist_non_det_texp
   | Or _ | Neg _ | Rneg _ | Not _ | Sample _ | Observe _ | List _ | Record _ ->
       raise (Type_error "Expected distribution")
 
-and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_non_det_texp =
+and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_ndet_texp =
   Logs.debug (fun m ->
       m "Infering exp %a" Sexp.pp_hum [%sexp (exp : Parse_tree.exp)]);
   match exp with
@@ -441,4 +440,4 @@ and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_non_det_texp =
   | List _ -> failwith "List not implemented"
   | Record _ -> failwith "Record not implemented"
 
-let check : Parse_tree.exp -> some_non_det_texp = infer Id.Map.empty
+let check : Parse_tree.exp -> some_ndet_texp = infer Id.Map.empty
