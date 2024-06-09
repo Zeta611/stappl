@@ -2,7 +2,7 @@ open! Core
 open Parse_tree
 open Typed_tree
 
-type env = some_det_texp Id.Map.t
+type env = det some_texp Id.Map.t
 
 let gen_vertex =
   let cnt = ref 0 in
@@ -65,7 +65,7 @@ and peval_args : type a. (a, det) args -> (a, det) args * a vargs option =
   | te :: tl -> (
       match (peval te, peval_args tl) with
       | { ty; exp = Value v }, (tl, Some vargs) ->
-          ({ ty; exp = Value v } :: tl, Some ((dty_of_ty ty, v) :: vargs))
+          ({ ty; exp = Value v } :: tl, Some ((dty_of_dat_ty ty, v) :: vargs))
       | te, (tl, _) -> (te :: tl, None))
 
 and peval_pred : pred -> pred = function
@@ -102,20 +102,9 @@ let rec compile :
   | Value _ as exp -> (Graph.empty, { ty; exp })
   | Var x -> (
       let (Ex { ty = tyx; exp }) = Map.find_exn env x in
-      match (tyx, ty) with
-      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) -> (Graph.empty, { ty; exp })
-      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) -> (Graph.empty, { ty; exp })
-      | Dist_ty Tyu, Dist_ty Tyu -> (Graph.empty, { ty; exp })
-      | Dist_ty Tyb, Dist_ty Tyb -> (Graph.empty, { ty; exp })
-      | Dist_ty Tyi, Dist_ty Tyi -> (Graph.empty, { ty; exp })
-      | Dist_ty Tyr, Dist_ty Tyr -> (Graph.empty, { ty; exp })
-      | _, _ -> failwith "[Bug] Type mismatch")
+      match eq_tys tyx ty with
+      | Some Refl -> (Graph.empty, { ty; exp })
+      | None -> failwith "[Bug] Type mismatch")
   | Bop (op, e1, e2) ->
       let g1, te1 = compile ~env ~pred e1 in
       let g2, te2 = compile ~env ~pred e2 in
@@ -153,7 +142,7 @@ let rec compile :
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list de_fvs) ~f:(fun z -> (z, v));
-            pmdf_map = Id.Map.singleton v (Ex f : some_dist_det_texp);
+            pmdf_map = Id.Map.singleton v (Ex f : pmdf);
             obs_map = Id.Map.empty;
           }
       in
@@ -172,8 +161,8 @@ let rec compile :
           {
             vertices = [ v ];
             arcs = List.map (Set.to_list fvs) ~f:(fun z -> (z, v));
-            pmdf_map = Id.Map.singleton v (Ex f : some_dist_det_texp);
-            obs_map = Id.Map.singleton v (Ex de2 : some_val_det_texp);
+            pmdf_map = Id.Map.singleton v (Ex f : pmdf);
+            obs_map = Id.Map.singleton v (Ex de2 : obs);
           }
       in
       Graph.(g1 @| g2 @| g', { ty = Dat_ty (Tyu, Val); exp = Value () })
@@ -190,7 +179,7 @@ and compile_args :
 
 exception Query_not_found
 
-let compile_program (prog : program) : Graph.t * some_rv_det_texp =
+let compile_program (prog : program) : Graph.t * Evaluator.query =
   Logs.debug (fun m ->
       m "Inlining program %a" Sexp.pp_hum [%sexp (prog : Parse_tree.program)]);
   let exp = Preprocessor.inline prog in

@@ -69,46 +69,70 @@ and (_, _) exp =
       -> ((unit, value) dat_ty, ndet) exp
 
 type some_dty = Ex : _ dty -> some_dty
+type some_val = Ex : ('a dty * 'a) -> some_val
 type some_stamp = Ex : _ stamp -> some_stamp
 type some_ty = Ex : _ ty -> some_ty
-type some_ndet_texp = Ex : (_, ndet) texp -> some_ndet_texp
-type some_det_texp = Ex : (_, det) texp -> some_det_texp
-type some_dat_ndet_texp = Ex : (_ dat_ty, ndet) texp -> some_dat_ndet_texp
+type _ some_texp = Ex : (_, 'd) texp -> 'd some_texp
 
-type _ some_dat_ndet_texp1 =
-  | Ex : (('a, _) dat_ty, ndet) texp -> 'a some_dat_ndet_texp1
+type _ some_dat_ndet_texp =
+  | Ex : (('a, _) dat_ty, ndet) texp -> 'a some_dat_ndet_texp
 
-type some_val_det_texp =
-  | Ex : ((_, value) dat_ty, det) texp -> some_val_det_texp
-
-type some_rv_det_texp = Ex : ((_, rv) dat_ty, det) texp -> some_rv_det_texp
-type some_dist_det_texp = Ex : (_ dist_ty, det) texp -> some_dist_det_texp
+type _ some_val_texp = Ex : ((_, value) dat_ty, 'd) texp -> 'd some_val_texp
+type _ some_rv_texp = Ex : ((_, rv) dat_ty, 'd) texp -> 'd some_rv_texp
+type _ some_dat_texp = Ex : (_ dat_ty, 'd) texp -> 'd some_dat_texp
+type _ some_dist_texp = Ex : (_ dist_ty, 'd) texp -> 'd some_dist_texp
 type (_, _) eq = Refl : ('a, 'a) eq
 
-let dty_of_ty : type a. (a, _) dat_ty ty -> a dty = function
+let dty_of_dat_ty : type a. (a, _) dat_ty ty -> a dty = function
   | Dat_ty (dty, _) -> dty
 
-let some_dat_ndet_texp_of_ndet_texp :
-    type a. (a, ndet) texp -> some_dat_ndet_texp option =
- fun texp ->
-  match texp.ty with
-  | Dat_ty (Tyu, _) -> Some (Ex texp)
-  | Dat_ty (Tyb, _) -> Some (Ex texp)
-  | Dat_ty (Tyi, _) -> Some (Ex texp)
-  | Dat_ty (Tyr, _) -> Some (Ex texp)
-  | _ -> None
+let dty_of_dist_ty : type a. a dist_ty ty -> a dty = function
+  | Dist_ty dty -> dty
 
-let eq_dat_ndet_texps :
-    type a1 a2.
-    ((a1, _) dat_ty, ndet) texp ->
-    ((a2, _) dat_ty, ndet) texp ->
-    (a1, a2) eq option =
- fun te_con te_alt ->
-  match (dty_of_ty te_con.ty, dty_of_ty te_alt.ty) with
+let some_dist_of_texp : type a d. (a, d) texp -> d some_dist_texp option =
+ fun texp -> match texp.ty with Dist_ty _ -> Some (Ex texp) | _ -> None
+
+let some_dat_of_texp : type a d. (a, d) texp -> d some_dat_texp option =
+ fun texp -> match texp.ty with Dat_ty _ -> Some (Ex texp) | _ -> None
+
+let some_dty_of_ty : type a. a ty -> some_dty option = function
+  | Dat_ty (dty, _) -> Some (Ex dty)
+  | Dist_ty _ -> None
+
+let eq_dtys : type a1 a2. a1 dty -> a2 dty -> (a1, a2) eq option =
+ fun t1 t2 ->
+  match (t1, t2) with
   | Tyu, Tyu -> Some Refl
   | Tyb, Tyb -> Some Refl
   | Tyi, Tyi -> Some Refl
   | Tyr, Tyr -> Some Refl
+  | _, _ -> None
+
+let unify_dtys : type a1 a2. a1 dty -> a2 dty -> (a1, a2) eq -> a1 dty =
+ fun t _ Refl -> t
+
+let merge_stamps : type s1 s2. s1 stamp -> s2 stamp -> some_stamp =
+ fun s1 s2 -> match (s1, s2) with Val, Val -> Ex Val | _, _ -> Ex Rv
+
+let eq_dat_tys :
+    type a1 a2. (a1, _) dat_ty ty -> (a2, _) dat_ty ty -> (a1, a2) eq option =
+ fun t1 t2 -> eq_dtys (dty_of_dat_ty t1) (dty_of_dat_ty t2)
+
+let eq_tys : type a1 a2. a1 ty -> a2 ty -> (a1, a2) eq option =
+ fun t1 t2 ->
+  match (t1, t2) with
+  | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) -> Some Refl
+  | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) -> Some Refl
+  | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) -> Some Refl
+  | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) -> Some Refl
+  | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) -> Some Refl
+  | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) -> Some Refl
+  | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) -> Some Refl
+  | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) -> Some Refl
+  | Dist_ty Tyu, Dist_ty Tyu -> Some Refl
+  | Dist_ty Tyb, Dist_ty Tyb -> Some Refl
+  | Dist_ty Tyi, Dist_ty Tyi -> Some Refl
+  | Dist_ty Tyr, Dist_ty Tyr -> Some Refl
   | _, _ -> None
 
 let string_of_dty : type a. a dty -> string = function
@@ -199,5 +223,5 @@ module Erased = struct
     | And (pred, exp) -> Bop ("&&", of_pred pred, of_exp exp)
     | And_not (pred, exp) -> Bop ("&&", of_pred pred, Uop ("not", of_exp exp))
 
-  let of_rv (Ex rv : some_rv_det_texp) = rv |> of_exp
+  let of_rv (Ex rv : _ some_rv_texp) = rv |> of_exp
 end

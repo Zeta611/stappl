@@ -3,8 +3,10 @@ open Typed_tree
 
 type vertex = Id.t
 type arc = vertex * vertex
-type pmdf_map = some_dist_det_texp Id.Map.t
-type obs_map = some_val_det_texp Id.Map.t
+type pmdf = det some_dist_texp
+type pmdf_map = pmdf Id.Map.t
+type obs = det some_val_texp
+type obs_map = obs Id.Map.t
 
 type t = {
   vertices : vertex list;
@@ -36,7 +38,7 @@ let union g1 g2 =
 let ( @| ) = union
 
 let unobserved_vertices_pmdfs ({ vertices; pmdf_map; obs_map; _ } : t) :
-    (vertex * some_dist_det_texp) list =
+    (vertex * pmdf) list =
   List.filter_map vertices ~f:(fun v ->
       if Map.mem obs_map v then None
       else

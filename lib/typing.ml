@@ -53,80 +53,24 @@ let unify_branches :
     ((a_con, s_con) dat_ty, ndet) texp ->
     ((a_alt, s_alt) dat_ty, ndet) texp ->
     (a_con, a_alt) eq ->
-    a_con some_dat_ndet_texp1 =
- fun te_pred te_con te_alt Refl ->
-  match te_pred.ty with
-  | Dat_ty (Tyb, Val) -> (
-      match (te_con.ty, te_alt.ty) with
-      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-          Ex { ty = Dat_ty (Tyu, Val); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-          Ex { ty = Dat_ty (Tyb, Val); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-          Ex { ty = Dat_ty (Tyi, Val); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-          Ex { ty = Dat_ty (Tyr, Val); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
-  | Dat_ty (Tyb, Rv) -> (
-      match (te_con.ty, te_alt.ty) with
-      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
+    a_con some_dat_ndet_texp =
+ fun ({ ty = Dat_ty (Tyb, s_pred); _ } as te_pred)
+     ({ ty = Dat_ty (dty_con, s_con); _ } as te_con)
+     ({ ty = Dat_ty (dty_alt, s_alt); _ } as te_alt) Refl ->
+  let exp = If (te_pred, te_con, te_alt) in
+  match s_pred with
+  | Val -> (
+      let dty = unify_dtys dty_con dty_alt Refl in
+      let (Ex s) = merge_stamps s_con s_alt in
+      match s with
+      | Val -> Ex { ty = Dat_ty (dty, Val); exp }
+      | Rv -> Ex { ty = Dat_ty (dty, Rv); exp })
+  | Rv ->
+      let dty = unify_dtys dty_con dty_alt Refl in
+      Ex { ty = Dat_ty (dty, Rv); exp }
 
 let rec check_dat :
-    type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_ndet_texp1 =
+    type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_ndet_texp =
  fun tyenv (exp, dty) ->
   Logs.debug (fun m ->
       m "Checking exp (%a : %a)" Sexp.pp_hum
@@ -138,17 +82,17 @@ let rec check_dat :
   | Var x -> (
       match Map.find tyenv x with
       | None -> raise (Unbound_variable x)
-      | Some (Ex ty_x) -> (
-          match (ty_x, dty) with
-          | Dat_ty (Tyu, _), Tyu -> Ex { ty = ty_x; exp = Var x }
-          | Dat_ty (Tyi, _), Tyi -> Ex { ty = ty_x; exp = Var x }
-          | Dat_ty (Tyr, _), Tyr -> Ex { ty = ty_x; exp = Var x }
-          | Dat_ty (Tyb, _), Tyb -> Ex { ty = ty_x; exp = Var x }
-          | ty_x, dty ->
+      | Some (Ex (Dat_ty (dty_x, _) as ty)) -> (
+          match eq_dtys dty_x dty with
+          | Some Refl -> Ex { ty; exp = Var x }
+          | None ->
               raise
                 (Type_error
-                   (sprintf "Variable %s: expected (%s _), got %s" x
-                      (string_of_dty dty) (string_of_ty ty_x)))))
+                   (sprintf "Variable %s: expected %s, got %s" x
+                      (string_of_dty dty) (string_of_dty dty_x))))
+      | Some (Ex (Dist_ty _)) ->
+          raise (Type_error "Variable %s: expected data type, got distribution")
+      )
   | Int i -> (
       match dty with
       | Tyi -> Ex { ty = Dat_ty (Tyi, Val); exp = Value i }
@@ -234,21 +178,17 @@ let rec check_dat :
   | Observe (de, ve) -> (
       match dty with
       | Tyu -> (
-          let tde = infer tyenv de in
-          let tve = infer tyenv ve in
+          let (Ex tde) = infer tyenv de in
+          let (Ex tve) = infer tyenv ve in
           match (tde, tve) with
-          | ( Ex ({ ty = Dist_ty Tyu; _ } as tde),
-              Ex ({ ty = Dat_ty (Tyu, Val); _ } as tve) ) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = Observe (tde, tve) }
-          | ( Ex ({ ty = Dist_ty Tyb; _ } as tde),
-              Ex ({ ty = Dat_ty (Tyb, Val); _ } as tve) ) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = Observe (tde, tve) }
-          | ( Ex ({ ty = Dist_ty Tyi; _ } as tde),
-              Ex ({ ty = Dat_ty (Tyi, Val); _ } as tve) ) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = Observe (tde, tve) }
-          | ( Ex ({ ty = Dist_ty Tyr; _ } as tde),
-              Ex ({ ty = Dat_ty (Tyr, Val); _ } as tve) ) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = Observe (tde, tve) }
+          | { ty = Dist_ty tde_dty; _ }, { ty = Dat_ty (tve_dty, Val); _ } -> (
+              match eq_dtys tde_dty tve_dty with
+              | Some Refl ->
+                  Ex { ty = Dat_ty (Tyu, Val); exp = Observe (tde, tve) }
+              | None ->
+                  raise
+                    (Type_error
+                       (sprintf "Arguments to observe have unexpected types")))
           | _, _ ->
               (* TODO: more precise error message *)
               raise
@@ -271,13 +211,9 @@ let rec check_dat :
       let (Ex te_con) = check_dat tyenv (e_con, dty) in
       let (Ex te_alt) = check_dat tyenv (e_alt, dty) in
       unify_branches te_pred te_con te_alt Refl
-  | Sample e -> (
+  | Sample e ->
       let te = check_dist tyenv (e, dty) in
-      match te.ty with
-      | Dist_ty Tyu -> Ex { ty = Dat_ty (Tyu, Rv); exp = Sample te }
-      | Dist_ty Tyb -> Ex { ty = Dat_ty (Tyb, Rv); exp = Sample te }
-      | Dist_ty Tyi -> Ex { ty = Dat_ty (Tyi, Rv); exp = Sample te }
-      | Dist_ty Tyr -> Ex { ty = Dat_ty (Tyr, Rv); exp = Sample te })
+      Ex { ty = Dat_ty (dty_of_dist_ty te.ty, Rv); exp = Sample te }
   | List _ -> raise (Type_error "List not implemented")
   | Record _ -> raise (Type_error "Record not implemented")
   | Call (f, e) ->
@@ -292,12 +228,10 @@ and check_uop :
     (a, ret) uop ->
     Parse_tree.exp * a dty ->
     ret dty ->
-    ret some_dat_ndet_texp1 =
+    ret some_dat_ndet_texp =
  fun tyenv uop (e, t) tret ->
   let (Ex ({ ty = Dat_ty (_, s); _ } as te)) = check_dat tyenv (e, t) in
-  match s with
-  | Val -> Ex { ty = Dat_ty (tret, Val); exp = Uop (uop, te) }
-  | _ -> Ex { ty = Dat_ty (tret, Rv); exp = Uop (uop, te) }
+  Ex { ty = Dat_ty (tret, s); exp = Uop (uop, te) }
 
 and check_bop :
     type a1 a2 ret.
@@ -306,13 +240,12 @@ and check_bop :
     Parse_tree.exp * a1 dty ->
     Parse_tree.exp * a2 dty ->
     ret dty ->
-    ret some_dat_ndet_texp1 =
+    ret some_dat_ndet_texp =
  fun tyenv bop (e1, t1) (e2, t2) tret ->
   let (Ex ({ ty = Dat_ty (_, s1); _ } as te1)) = check_dat tyenv (e1, t1) in
   let (Ex ({ ty = Dat_ty (_, s2); _ } as te2)) = check_dat tyenv (e2, t2) in
-  match (s1, s2) with
-  | Val, Val -> Ex { ty = Dat_ty (tret, Val); exp = Bop (bop, te1, te2) }
-  | _, _ -> Ex { ty = Dat_ty (tret, Rv); exp = Bop (bop, te1, te2) }
+  let (Ex s) = merge_stamps s1 s2 in
+  Ex { ty = Dat_ty (tret, s); exp = Bop (bop, te1, te2) }
 
 and check_args :
     type a. tyenv -> Id.t -> Parse_tree.exp list * a params -> (a, ndet) args =
@@ -341,16 +274,14 @@ and check_dist :
       match Map.find tyenv x with
       | None -> raise (Unbound_variable x)
       | Some (Ex ty_x) -> (
-          match (ty_x, dty) with
-          | Dist_ty Tyu, Tyu -> { ty = ty_x; exp = Var x }
-          | Dist_ty Tyb, Tyb -> { ty = ty_x; exp = Var x }
-          | Dist_ty Tyi, Tyi -> { ty = ty_x; exp = Var x }
-          | Dist_ty Tyr, Tyr -> { ty = ty_x; exp = Var x }
-          | ty_x, dty ->
+          match eq_tys ty_x (Dist_ty dty) with
+          | Some Refl -> { ty = ty_x; exp = Var x }
+          | None ->
               raise
                 (Type_error
-                   (sprintf "Variable %s: expected (%s _), got %s" x
-                      (string_of_dty dty) (string_of_ty ty_x)))))
+                   (sprintf "Variable %s: expected %s, got %s" x
+                      (string_of_ty (Dist_ty dty))
+                      (string_of_ty ty_x)))))
   | Seq (e1, e2) ->
       let (Ex te1) = infer tyenv e1 in
       let te2 = check_dist tyenv (e2, dty) in
@@ -365,12 +296,9 @@ and check_dist :
   | Call (prim, args) -> (
       let (Ex dist) = Dist.get_dist prim in
       let args = check_args tyenv dist.name (args, dist.params) in
-      match (dist.ret, dty) with
-      | Tyu, Tyu -> { ty = Dist_ty Tyu; exp = Call (dist, args) }
-      | Tyb, Tyb -> { ty = Dist_ty Tyb; exp = Call (dist, args) }
-      | Tyi, Tyi -> { ty = Dist_ty Tyi; exp = Call (dist, args) }
-      | Tyr, Tyr -> { ty = Dist_ty Tyr; exp = Call (dist, args) }
-      | _ ->
+      match eq_dtys dist.ret dty with
+      | Some Refl -> { ty = Dist_ty dty; exp = Call (dist, args) }
+      | None ->
           raise
             (Type_error
                (sprintf "Expected %s for Call, got %s" (string_of_dty dist.ret)
@@ -380,7 +308,7 @@ and check_dist :
   | Or _ | Neg _ | Rneg _ | Not _ | Sample _ | Observe _ | List _ | Record _ ->
       raise (Type_error "Expected distribution")
 
-and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_ndet_texp =
+and infer (tyenv : tyenv) (exp : Parse_tree.exp) : ndet some_texp =
   Logs.debug (fun m ->
       m "Infering exp %a" Sexp.pp_hum [%sexp (exp : Parse_tree.exp)]);
   match exp with
@@ -414,12 +342,9 @@ and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_ndet_texp =
       let (Ex te_pred) = check_dat tyenv (e_pred, Tyb) in
       let (Ex te_con) = infer tyenv e_con in
       let (Ex te_alt) = infer tyenv e_alt in
-      match
-        ( some_dat_ndet_texp_of_ndet_texp te_con,
-          some_dat_ndet_texp_of_ndet_texp te_alt )
-      with
+      match (some_dat_of_texp te_con, some_dat_of_texp te_alt) with
       | Some (Ex te_con), Some (Ex te_alt) -> (
-          match eq_dat_ndet_texps te_con te_alt with
+          match eq_dat_tys te_con.ty te_alt.ty with
           | Some Refl ->
               let (Ex texp) = unify_branches te_pred te_con te_alt Refl in
               Ex texp
@@ -431,13 +356,11 @@ and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_ndet_texp =
       Ex { ty = Dist_ty dist.ret; exp = Call (dist, args) }
   | Sample e -> (
       let (Ex te) = infer tyenv e in
-      match te with
-      | { ty = Dist_ty Tyu; _ } -> Ex { ty = Dat_ty (Tyu, Rv); exp = Sample te }
-      | { ty = Dist_ty Tyb; _ } -> Ex { ty = Dat_ty (Tyb, Rv); exp = Sample te }
-      | { ty = Dist_ty Tyi; _ } -> Ex { ty = Dat_ty (Tyi, Rv); exp = Sample te }
-      | { ty = Dist_ty Tyr; _ } -> Ex { ty = Dat_ty (Tyr, Rv); exp = Sample te }
-      | _ -> raise (Type_error "Expected distribution"))
+      match some_dist_of_texp te with
+      | Some (Ex ({ ty = Dist_ty dty; _ } as te)) ->
+          Ex { ty = Dat_ty (dty, Rv); exp = Sample te }
+      | None -> raise (Type_error "Expected distribution"))
   | List _ -> failwith "List not implemented"
   | Record _ -> failwith "Record not implemented"
 
-let check : Parse_tree.exp -> some_ndet_texp = infer Id.Map.empty
+let check : Parse_tree.exp -> ndet some_texp = infer Id.Map.empty
