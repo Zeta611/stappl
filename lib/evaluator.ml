@@ -1,6 +1,8 @@
 open! Core
 open Typed_tree
 
+type some_v = Ex : ('a dty * 'a) -> some_v
+
 module Ctx = struct
   type t = some_v Id.Table.t
 
@@ -9,62 +11,94 @@ module Ctx = struct
   let find_exn = Hashtbl.find_exn
 end
 
-let rec eval : type a. Ctx.t -> (a, det) texp -> a =
+let rec eval_dat : type a s. Ctx.t -> ((a, s) dat_ty, det) texp -> a =
  fun ctx { ty; exp } ->
   match exp with
   | Value v -> v
   | Var x -> (
       let (Ex (tv, v)) = Ctx.find_exn ctx x in
       match (ty, tv) with
+      | Dat_ty (Tyu, _), Tyu -> v
+      | Dat_ty (Tyb, _), Tyb -> v
+      | Dat_ty (Tyi, _), Tyi -> v
+      | Dat_ty (Tyr, _), Tyr -> v
+      | _ -> assert false)
+  | Bop ({ op; _ }, te1, te2) -> op (eval_dat ctx te1) (eval_dat ctx te2)
+  | Uop ({ op; _ }, te) -> op (eval_dat ctx te)
+  | If (te_pred, te_cons, te_alt) ->
+      if eval_dat ctx te_pred then eval_dat ctx te_cons else eval_dat ctx te_alt
+  | If_con te -> eval_dat ctx te
+  | If_alt te -> eval_dat ctx te
+
+and eval_dist : type a. Ctx.t -> (a dist_ty, det) texp -> a =
+ fun ctx { ty = Dist_ty dty as ty; exp } ->
+  match exp with
+  | Call (f, args) -> f.sampler (eval_args ctx args)
+  | Var x -> (
+      let (Ex (tv, v)) = Ctx.find_exn ctx x in
+      match (dty, tv) with
+      | Tyu, Tyu -> v
+      | Tyb, Tyb -> v
       | Tyi, Tyi -> v
       | Tyr, Tyr -> v
-      | Tyb, Tyb -> v
       | _ -> assert false)
-  | Bop (op, te1, te2) -> op.f (eval ctx te1) (eval ctx te2)
-  | Uop (op, te) -> op.f (eval ctx te)
-  | If (te_pred, te_cons, te_alt) ->
-      if eval ctx te_pred then eval ctx te_cons else eval ctx te_alt
-  | Call (f, args) -> f.sampler (eval_args ctx args)
+  | If_pred (pred, dist) ->
+      if eval_pred ctx pred then eval_dist ctx dist
+      else eval_dist ctx { ty; exp = Call (Dist.one dty, []) }
+
+and eval_pred (ctx : Ctx.t) : pred -> bool =
+  (*print_endline "[eval_pred]";*)
+  function
+  | Empty | True -> true
+  | False -> false
+  | And (p, de) -> eval_dat ctx de && eval_pred ctx p
+  | And_not (p, de) -> (not (eval_dat ctx de)) && eval_pred ctx p
 
 and eval_args : type a. Ctx.t -> (a, det) args -> a vargs =
  fun ctx -> function
   | [] -> []
-  | te :: tl -> (te.ty, eval ctx te) :: eval_args ctx tl
+  | ({ ty = Dat_ty (dty, _); _ } as te) :: tl ->
+      (dty, eval_dat ctx te) :: eval_args ctx tl
 
-let rec eval_pmdf (ctx : Ctx.t) (Ex { ty; exp } : some_det) :
-    (some_v -> float) * some_v =
+let rec eval_pmdf :
+    type a. Ctx.t -> (a dist_ty, det) texp -> (some_v -> real) * some_v =
+ fun ctx { ty = Dist_ty dty as ty; exp } ->
   match exp with
-  | If (te_pred, te_cons, te_alt) ->
-      if eval ctx te_pred then eval_pmdf ctx (Ex te_cons)
-      else eval_pmdf ctx (Ex te_alt)
+  | If_pred (pred, te) ->
+      if eval_pred ctx pred then eval_pmdf ctx te
+      else eval_pmdf ctx { ty; exp = Call (Dist.one dty, []) }
   | Call (f, args) ->
       let pmdf (Ex (ty', v) : some_v) =
-        match (ty, ty') with
+        match (dty, ty') with
+        | Tyu, Tyu -> f.log_pmdf (eval_args ctx args) v
+        | Tyb, Tyb -> f.log_pmdf (eval_args ctx args) v
         | Tyi, Tyi -> f.log_pmdf (eval_args ctx args) v
         | Tyr, Tyr -> f.log_pmdf (eval_args ctx args) v
-        | Tyb, Tyb -> f.log_pmdf (eval_args ctx args) v
         | _, _ -> assert false
       in
-      (pmdf, Ex (ty, eval ctx { ty; exp }))
+      (pmdf, Ex (dty, eval_dist ctx { ty; exp }))
   | _ -> (* not reachable *) assert false
 
-let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (query : some_det) :
-    float array =
+(* TODO: Remove existential wrapper *)
+let gibbs_sampling ~(num_samples : int) (graph : Graph.t)
+    (Ex query : some_rv_texp) : float array =
   (* Initialize the context with the observed values. Float conversion must
      succeed as observed variables do not contain free variables *)
-  let default : type a. a ty -> a = function
+  let default : type a. a dty -> a = function
+    | Tyu -> ()
+    | Tyb -> false
     | Tyi -> 0
     | Tyr -> 0.0
-    | Tyb -> false
   in
   let ctx = Id.Table.create () in
-  Map.iteri graph.obs_map ~f:(fun ~key:name ~data:(Ex { ty; exp }) ->
-      let value : some_v = Ex (ty, eval ctx { ty; exp }) in
+  Map.iteri graph.obs_map
+    ~f:(fun ~key:name ~data:(Ex { ty = Dat_ty (dty, _) as ty; exp }) ->
+      let value : some_v = Ex (dty, eval_dat ctx { ty; exp }) in
       Ctx.set ctx ~name ~value);
 
   let unobserved = Graph.unobserved_vertices_pmdfs graph in
-  List.iter unobserved ~f:(fun (name, Ex { ty; _ }) ->
-      let value : some_v = Ex (ty, default ty) in
+  List.iter unobserved ~f:(fun (name, Ex { ty = Dist_ty dty; _ }) ->
+      let value : some_v = Ex (dty, default dty) in
       Ctx.set ctx ~name ~value);
 
   (* Adapted from gibbs_sampling of Owl *)
@@ -73,7 +107,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (query : some_det) :
   let samples = Array.create ~len:num_samples 0. in
   for i = 0 to num_iter - 1 do
     (* Gibbs step *)
-    List.iter unobserved ~f:(fun (name, exp) ->
+    List.iter unobserved ~f:(fun (name, Ex exp) ->
         let curr = Ctx.find_exn ctx name in
         let log_pmdf, cand = eval_pmdf ctx exp in
 
@@ -84,12 +118,12 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (query : some_det) :
 
         (* variables influenced by "name" *)
         let name_infl =
-          Map.filteri graph.pmdf_map
-            ~f:(fun ~key:name' ~data:(Ex { exp; _ }) ->
+          Map.filteri graph.pmdf_map ~f:(fun ~key:name' ~data:(Ex { exp; _ }) ->
               Id.(name' = name) || Set.mem (fv exp) name)
         in
         let log_alpha =
-          Map.fold name_infl ~init:log_alpha ~f:(fun ~key:name' ~data:exp acc ->
+          Map.fold name_infl ~init:log_alpha
+            ~f:(fun ~key:name' ~data:(Ex exp) acc ->
               let prob_w_cand =
                 (fst (eval_pmdf ctx exp)) (Ctx.find_exn ctx name')
               in
@@ -106,12 +140,13 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (query : some_det) :
         if Float.(uniform > alpha) then Ctx.set ctx ~name ~value:curr);
 
     if i >= a && i mod b = 0 then
-      let (Ex query) = query in
       let query =
-        match (query.ty, eval ctx query) with
-        | Tyi, i -> float_of_int i
-        | Tyr, r -> r
-        | Tyb, b -> if b then 1.0 else 0.0
+        match (query.ty, eval_dat ctx query) with
+        (* TODO: Fix query type error *)
+        | Dat_ty (Tyu, Rv), _ -> 0.0
+        | Dat_ty (Tyb, Rv), b -> if b then 1.0 else 0.0
+        | Dat_ty (Tyi, Rv), i -> float_of_int i
+        | Dat_ty (Tyr, Rv), r -> r
       in
       samples.((i - a) / b) <- query
   done;
@@ -119,7 +154,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (query : some_det) :
   samples
 
 let infer ?(filename : string = "out") ?(num_samples : int = 100_000)
-    (graph : Graph.t) (query : some_det) : string =
+    (graph : Graph.t) (query : some_rv_texp) : string =
   let samples = gibbs_sampling graph ~num_samples query in
 
   let filename = String.chop_suffix_if_exists filename ~suffix:".stp" in
@@ -127,7 +162,7 @@ let infer ?(filename : string = "out") ?(num_samples : int = 100_000)
 
   let open Owl_plplot in
   let h = Plot.create plot_path in
-  Plot.set_title h (Printing.to_string query);
+  Plot.set_title h (Printing.of_rv query);
   let mat = Owl.Mat.of_array samples 1 num_samples in
   Plot.histogram ~h ~bin:50 mat;
   Plot.output h;

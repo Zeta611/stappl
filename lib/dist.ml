@@ -1,7 +1,17 @@
 open! Core
 open Typed_tree
 
-let one : type a. a ty -> (a, unit) dist = function
+type some_dist = Ex : _ dist -> some_dist
+
+let one : type a. a dty -> (a, unit) dist = function
+  | Tyu ->
+      {
+        ret = Tyu;
+        name = "one";
+        params = [];
+        sampler = (fun [] -> ());
+        log_pmdf = (fun [] _ -> 0.0);
+      }
   | Tyi ->
       {
         ret = Tyi;

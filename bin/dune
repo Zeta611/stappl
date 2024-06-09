@@ -1,7 +1,13 @@
 (executable
  (public_name stappl)
  (name main)
- (libraries core core_unix.command_unix core_unix.filename_unix stappl)
- (modes byte exe)
+ (libraries
+  core
+  core_unix.command_unix
+  core_unix.filename_unix
+  logs
+  logs.fmt
+  stappl)
  (preprocess
-  (pps ppx_jane)))
+  (pps ppx_jane))
+ (modes byte exe))
