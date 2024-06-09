@@ -26,6 +26,8 @@
  (depends
   (core (>= 0.16.2))
   (core_unix (>= 0.16.0))
+  (fmt (>= 0.9.0))
+  (logs (>= 0.7.0))
   (owl (>= 1.1))
   (owl-plplot (>= 1.0))
   (string_dict (>= 0.16.0))
