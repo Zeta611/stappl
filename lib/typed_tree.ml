@@ -1,5 +1,6 @@
 open! Core
 
+type (_, _) eq = Refl : ('a, 'a) eq
 type real = float
 type _ dty = Tyu : unit dty | Tyi : int dty | Tyr : real dty | Tyb : bool dty
 type value = Val_ph
@@ -83,12 +84,35 @@ type _ some_dat_non_det_texp =
   | Ex : (('a, _) dat_ty, non_det) texp -> 'a some_dat_non_det_texp
 
 type 'a dist_non_det_texp = ('a dist_ty, non_det) texp
-(*  | Ex : ('a dist_ty ty, non_det) texp -> 'a some_dist_non_det_texp*)
 
-(*type _ some_dist_texp = Ex : ('a dist_ty, non_det) texp -> 'a some_dist_texp*)
+type some_ndist_ndet_texp =
+  | Ex : (_ dat_ty, non_det) texp -> some_ndist_ndet_texp
 
 let dty_of_ty : type a. (a, _) dat_ty ty -> a dty = function
   | Dat_ty (dty, _) -> dty
+
+let some_dat_ndet_texp_of_ndet_texp :
+    type a. (a, non_det) texp -> some_ndist_ndet_texp option =
+ fun texp ->
+  match texp.ty with
+  | Dat_ty (Tyu, _) -> Some (Ex texp)
+  | Dat_ty (Tyb, _) -> Some (Ex texp)
+  | Dat_ty (Tyi, _) -> Some (Ex texp)
+  | Dat_ty (Tyr, _) -> Some (Ex texp)
+  | _ -> None
+
+let eq_dat_ndet_texps :
+    type a1 a2.
+    ((a1, _) dat_ty, non_det) texp ->
+    ((a2, _) dat_ty, non_det) texp ->
+    (a1, a2) eq option =
+ fun te_con te_alt ->
+  match (dty_of_ty te_con.ty, dty_of_ty te_alt.ty) with
+  | Tyu, Tyu -> Some Refl
+  | Tyb, Tyb -> Some Refl
+  | Tyi, Tyi -> Some Refl
+  | Tyr, Tyr -> Some Refl
+  | _, _ -> None
 
 let string_of_dty : type a. a dty -> string = function
   | Tyu -> "unit"

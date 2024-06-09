@@ -47,6 +47,84 @@ let get_uop : type a b. Parse_tree.exp * (a dty * b dty) -> (a, b) uop =
            ("Expected unary operation, got "
            ^ ([%sexp (e : Parse_tree.exp)] |> Sexp.to_string_hum)))
 
+let unify_branches :
+    type a_con a_alt s_pred s_con s_alt.
+    ((bool, s_pred) dat_ty, non_det) texp ->
+    ((a_con, s_con) dat_ty, non_det) texp ->
+    ((a_alt, s_alt) dat_ty, non_det) texp ->
+    (a_con, a_alt) eq ->
+    a_con some_dat_non_det_texp =
+ fun te_pred te_con te_alt Refl ->
+  match te_pred.ty with
+  | Dat_ty (Tyb, Val) -> (
+      match (te_con.ty, te_alt.ty) with
+      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
+          Ex { ty = Dat_ty (Tyu, Val); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
+          Ex { ty = Dat_ty (Tyb, Val); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
+          Ex { ty = Dat_ty (Tyi, Val); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
+          Ex { ty = Dat_ty (Tyr, Val); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
+  | Dat_ty (Tyb, Rv) -> (
+      match (te_con.ty, te_alt.ty) with
+      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
+          Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
+          Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
+          Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
+      | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
+          Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
+
 let rec check_dat :
     type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_non_det_texp =
  fun tyenv (exp, dty) ->
@@ -188,79 +266,11 @@ let rec check_dat :
       let tyenv = Map.set tyenv ~key:x ~data:(Ex te1.ty) in
       let (Ex te2) = check_dat tyenv (e2, dty) in
       Ex { te2 with exp = Let (x, te1, te2) }
-  | If (e_pred, e_con, e_alt) -> (
+  | If (e_pred, e_con, e_alt) ->
       let (Ex te_pred) = check_dat tyenv (e_pred, Tyb) in
       let (Ex te_con) = check_dat tyenv (e_con, dty) in
       let (Ex te_alt) = check_dat tyenv (e_alt, dty) in
-      match te_pred.ty with
-      | Dat_ty (Tyb, Val) -> (
-          match (te_con.ty, te_alt.ty) with
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) })
-      | Dat_ty (Tyb, Rv) -> (
-          match (te_con.ty, te_alt.ty) with
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }))
+      unify_branches te_pred te_con te_alt Refl
   | Sample e -> (
       let te = check_dist tyenv (e, dty) in
       match te.ty with
@@ -405,77 +415,17 @@ and infer (tyenv : tyenv) (exp : Parse_tree.exp) : some_non_det_texp =
       let (Ex te_pred) = check_dat tyenv (e_pred, Tyb) in
       let (Ex te_con) = infer tyenv e_con in
       let (Ex te_alt) = infer tyenv e_alt in
-      match te_pred.ty with
-      | Dat_ty (Tyb, Val) -> (
-          match (te_con.ty, te_alt.ty) with
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Val); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | t1, t2 -> raise_if_type_error exp t1 t2)
-      | Dat_ty (Tyb, Rv) -> (
-          match (te_con.ty, te_alt.ty) with
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Val), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Val) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyu, Rv), Dat_ty (Tyu, Rv) ->
-              Ex { ty = Dat_ty (Tyu, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Val), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Val) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyb, Rv), Dat_ty (Tyb, Rv) ->
-              Ex { ty = Dat_ty (Tyb, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Val), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Val) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyi, Rv), Dat_ty (Tyi, Rv) ->
-              Ex { ty = Dat_ty (Tyi, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Val), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Val) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | Dat_ty (Tyr, Rv), Dat_ty (Tyr, Rv) ->
-              Ex { ty = Dat_ty (Tyr, Rv); exp = If (te_pred, te_con, te_alt) }
-          | t1, t2 -> raise_if_type_error exp t1 t2))
+      match
+        ( some_dat_ndet_texp_of_ndet_texp te_con,
+          some_dat_ndet_texp_of_ndet_texp te_alt )
+      with
+      | Some (Ex te_con), Some (Ex te_alt) -> (
+          match eq_dat_ndet_texps te_con te_alt with
+          | Some Refl ->
+              let (Ex texp) = unify_branches te_pred te_con te_alt Refl in
+              Ex texp
+          | None -> raise_if_type_error exp te_con.ty te_alt.ty)
+      | _, _ -> raise_if_type_error exp te_con.ty te_alt.ty)
   | Call (prim, args) ->
       let (Ex dist) = Dist.get_dist prim in
       let args = check_args tyenv prim (args, dist.params) in
