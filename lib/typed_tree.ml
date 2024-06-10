@@ -7,6 +7,13 @@ type _ dty = Tyu : unit dty | Tyi : int dty | Tyr : real dty | Tyb : bool dty
 type value = Val_ph
 type rv = Rv_ph
 type _ stamp = Val : value stamp | Rv : rv stamp
+
+type (_, _, _) merge_stamp =
+  | Both_val : value stamp * value stamp -> (value, value, value) merge_stamp
+  | Right_rv : value stamp * rv stamp -> (value, rv, rv) merge_stamp
+  | Left_rv : rv stamp * value stamp -> (rv, value, rv) merge_stamp
+  | Both_rv : rv stamp * rv stamp -> (rv, rv, rv) merge_stamp
+
 type ('a, 'b) dat_ty = Dat_ty_ph
 type 'a dist_ty = Dist_ty_ph
 
@@ -49,18 +56,27 @@ and ('a, 'd) texp = { ty : 'a ty; exp : ('a, 'd) exp }
 
 and (_, _) exp =
   | Value : 'a -> (('a, value) dat_ty, _) exp
-  | Var : Id.t -> _ exp
+  | Var : Id.t -> (_, ndet) exp
+  | Rvar : Id.t -> (('a, rv) dat_ty, det) exp
   | Bop :
-      ('a, 'b, 'c) bop * (('a, _) dat_ty, 'd) texp * (('b, _) dat_ty, 'd) texp
-      -> (('c, _) dat_ty, 'd) exp
-  | Uop : ('a, 'b) uop * (('a, _) dat_ty, 'd) texp -> (('b, _) dat_ty, 'd) exp
+      ('a1, 'a2, 'a) bop
+      * (('a1, 's1) dat_ty, 'd) texp
+      * (('a2, 's2) dat_ty, 'd) texp
+      * ('s1, 's2, 's) merge_stamp
+      -> (('a, 's) dat_ty, 'd) exp
+  | Uop : ('a, 'b) uop * (('a, 's) dat_ty, 'd) texp -> (('b, 's) dat_ty, 'd) exp
   | If :
-      ((bool, _) dat_ty, 'd) texp
-      * (('a, _) dat_ty, 'd) texp
-      * (('a, _) dat_ty, 'd) texp
-      -> (('a, _) dat_ty, 'd) exp
-  | If_pred : pred * ('a dist_ty, det) texp -> ('a dist_ty, det) exp
-  | If_just : (('a, 's) dat_ty, det) texp -> (('a, _) dat_ty, det) exp
+      ((bool, 's_pred) dat_ty, ndet) texp
+      * (('a, 's_con) dat_ty, ndet) texp
+      * (('a, 's_alt) dat_ty, ndet) texp
+      * ('s_con, 's_alt, 's_ca) merge_stamp
+      * ('s_pred, 's_ca, 's) merge_stamp
+      -> (('a, 's) dat_ty, ndet) exp
+  | If_pred :
+      pred * (('a, _) dat_ty, det) texp * (('a, _) dat_ty, det) texp
+      -> (('a, _) dat_ty, det) exp
+  | If_pred_dist : pred * ('a dist_ty, det) texp -> ('a dist_ty, det) exp
+  | If_just : (('a, _) dat_ty, det) texp -> (('a, _) dat_ty, det) exp
   | Let : Id.t * ('a, ndet) texp * ('b, ndet) texp -> ('b, ndet) exp
   | Call : ('a, 'b) dist * ('b, 'd) args -> ('a dist_ty, 'd) exp
   | Sample : ('a dist_ty, ndet) texp -> (('a, rv) dat_ty, ndet) exp
@@ -70,7 +86,6 @@ and (_, _) exp =
 
 type some_dty = Ex : _ dty -> some_dty
 type some_val = Ex : ('a dty * 'a) -> some_val
-type some_stamp = Ex : _ stamp -> some_stamp
 type some_ty = Ex : _ ty -> some_ty
 type _ some_texp = Ex : (_, 'd) texp -> 'd some_texp
 
@@ -82,6 +97,9 @@ type _ some_rv_texp = Ex : ((_, rv) dat_ty, 'd) texp -> 'd some_rv_texp
 type _ some_dat_texp = Ex : (_ dat_ty, 'd) texp -> 'd some_dat_texp
 type _ some_dist_texp = Ex : (_ dist_ty, 'd) texp -> 'd some_dist_texp
 type (_, _) eq = Refl : ('a, 'a) eq
+
+type (_, _) some_merge_stamp =
+  | Ex : ('s1, 's2, 's) merge_stamp * 's stamp -> ('s1, 's2) some_merge_stamp
 
 let dty_of_dat_ty : type a. (a, _) dat_ty ty -> a dty = function
   | Dat_ty (dty, _) -> dty
@@ -111,8 +129,14 @@ let eq_dtys : type a1 a2. a1 dty -> a2 dty -> (a1, a2) eq option =
 let unify_dtys : type a1 a2. a1 dty -> a2 dty -> (a1, a2) eq -> a1 dty =
  fun t _ Refl -> t
 
-let merge_stamps : type s1 s2. s1 stamp -> s2 stamp -> some_stamp =
- fun s1 s2 -> match (s1, s2) with Val, Val -> Ex Val | _, _ -> Ex Rv
+let merge_stamps : type s1 s2. s1 stamp -> s2 stamp -> (s1, s2) some_merge_stamp
+    =
+ fun s1 s2 ->
+  match (s1, s2) with
+  | Val, Val -> Ex (Both_val (Val, Val), Val)
+  | Val, Rv -> Ex (Right_rv (Val, Rv), Rv)
+  | Rv, Val -> Ex (Left_rv (Rv, Val), Rv)
+  | Rv, Rv -> Ex (Both_rv (Rv, Rv), Rv)
 
 let eq_dat_tys :
     type a1 a2. (a1, _) dat_ty ty -> (a2, _) dat_ty ty -> (a1, a2) eq option =
@@ -157,12 +181,12 @@ let string_of_ty : type a. a ty -> string = function
 
 let rec fv : type a. (a, det) exp -> Id.Set.t = function
   | Value _ -> Id.Set.empty
-  | Var x -> Id.Set.singleton x
-  | Bop (_, { exp = e1; _ }, { exp = e2; _ }) -> Id.(fv e1 @| fv e2)
+  | Rvar x -> Id.Set.singleton x
+  | Bop (_, { exp = e1; _ }, { exp = e2; _ }, _) -> Id.(fv e1 @| fv e2)
   | Uop (_, { exp; _ }) -> fv exp
-  | If ({ exp = e_pred; _ }, { exp = e_cons; _ }, { exp = e_alt; _ }) ->
-      Id.(fv e_pred @| fv e_cons @| fv e_alt)
-  | If_pred (pred, { exp = e_cons; _ }) -> Id.(fv_pred pred @| fv e_cons)
+  | If_pred (pred, { exp = e_con; _ }, { exp = e_alt; _ }) ->
+      Id.(fv_pred pred @| fv e_con @| fv e_alt)
+  | If_pred_dist (pred, { exp = e_con; _ }) -> Id.(fv_pred pred @| fv e_con)
   | If_just { exp; _ } -> fv exp
   | Call (_, args) -> fv_args args
 
@@ -195,8 +219,9 @@ module Erased = struct
   let rec of_exp : type a d. (a, d) texp -> exp =
    fun { ty; exp } ->
     match exp with
-    | If (pred, cons, alt) -> If (of_exp pred, of_exp cons, of_exp alt)
-    | If_pred (pred, cons) -> If (of_pred pred, of_exp cons, Value "1")
+    | If (pred, con, alt, _, _) -> If (of_exp pred, of_exp con, of_exp alt)
+    | If_pred (pred, con, alt) -> If (of_pred pred, of_exp con, of_exp alt)
+    | If_pred_dist (pred, con) -> If (of_pred pred, of_exp con, Value "1")
     | If_just exp -> If_just (of_exp exp)
     | Value v -> (
         match ty with
@@ -204,8 +229,8 @@ module Erased = struct
         | Dat_ty (Tyi, _) -> Value (string_of_int v)
         | Dat_ty (Tyr, _) -> Value (string_of_float v)
         | Dat_ty (Tyb, _) -> Value (string_of_bool v))
-    | Var v -> Var v
-    | Bop (op, e1, e2) -> Bop (op.name, of_exp e1, of_exp e2)
+    | Var v | Rvar v -> Var v
+    | Bop (op, e1, e2, _) -> Bop (op.name, of_exp e1, of_exp e2)
     | Uop (op, e) -> Uop (op.name, of_exp e)
     | Let (x, e1, e2) -> Let (x, of_exp e1, of_exp e2)
     | Call (f, args) -> Call (f.name, of_args args)

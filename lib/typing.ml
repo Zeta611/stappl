@@ -57,17 +57,10 @@ let unify_branches :
  fun ({ ty = Dat_ty (Tyb, s_pred); _ } as te_pred)
      ({ ty = Dat_ty (dty_con, s_con); _ } as te_con)
      ({ ty = Dat_ty (dty_alt, s_alt); _ } as te_alt) Refl ->
-  let exp = If (te_pred, te_con, te_alt) in
-  match s_pred with
-  | Val -> (
-      let dty = unify_dtys dty_con dty_alt Refl in
-      let (Ex s) = merge_stamps s_con s_alt in
-      match s with
-      | Val -> Ex { ty = Dat_ty (dty, Val); exp }
-      | Rv -> Ex { ty = Dat_ty (dty, Rv); exp })
-  | Rv ->
-      let dty = unify_dtys dty_con dty_alt Refl in
-      Ex { ty = Dat_ty (dty, Rv); exp }
+  let dty = unify_dtys dty_con dty_alt Refl in
+  let (Ex (ms_ca, s_ca)) = merge_stamps s_con s_alt in
+  let (Ex (ms, s)) = merge_stamps s_pred s_ca in
+  Ex { ty = Dat_ty (dty, s); exp = If (te_pred, te_con, te_alt, ms_ca, ms) }
 
 let rec check_dat :
     type a. tyenv -> Parse_tree.exp * a dty -> a some_dat_ndet_texp =
@@ -244,8 +237,8 @@ and check_bop :
  fun tyenv bop (e1, t1) (e2, t2) tret ->
   let (Ex ({ ty = Dat_ty (_, s1); _ } as te1)) = check_dat tyenv (e1, t1) in
   let (Ex ({ ty = Dat_ty (_, s2); _ } as te2)) = check_dat tyenv (e2, t2) in
-  let (Ex s) = merge_stamps s1 s2 in
-  Ex { ty = Dat_ty (tret, s); exp = Bop (bop, te1, te2) }
+  let (Ex (ms, s)) = merge_stamps s1 s2 in
+  Ex { ty = Dat_ty (tret, s); exp = Bop (bop, te1, te2, ms) }
 
 and check_args :
     type a. tyenv -> Id.t -> Parse_tree.exp list * a params -> (a, ndet) args =

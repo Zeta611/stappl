@@ -7,57 +7,52 @@ type env = det some_texp Id.Map.t
 let gen_vertex =
   let cnt = ref 0 in
   fun () ->
-    let v = "X" ^ string_of_int !cnt in
     incr cnt;
-    v
+    [%string "X%{!cnt#Int}"]
 
 exception Score_invalid_arguments
-exception Not_closed_observation
 
 let rec peval : type a. (a, det) texp -> (a, det) texp =
- fun { ty; exp } ->
-  (* TODO: consider other cases *)
-  let exp =
-    match exp with
-    | Value _ -> exp
-    | Var _ -> exp
-    | Bop (op, te1, te2) -> (
-        match (peval te1, peval te2) with
-        (*| { ty = ty1; exp = Value v1 }, { ty = ty2; exp = Value v2 } ->*)
-        (*    Value (op.op v1 v2)*)
-        | te1, te2 -> Bop (op, te1, te2))
-    | Uop (op, te) -> (
-        match peval te with
-        (*| { exp = Value v; _ } -> Value (op.op v)*)
-        | e -> Uop (op, e))
-    | If (te_pred, te_cons, te_alt) -> (
-        match peval te_pred with
-        (*| { exp = Value true; _ } -> (peval te_cons).exp*)
-        (*| { exp = Value false; _ } -> (peval te_alt).exp*)
-        | te_pred -> If (te_pred, peval te_cons, peval te_alt))
-    | Call (f, args) -> (
-        match peval_args args with
-        | args, None -> Call (f, args)
-        | _, Some vargs ->
-            (* All arguments are fully evaluated;
-               Go ahead and fully evaluate the (primitive) call.
-               It is a primitive call as this is a deterministic expression. *)
-            Call
-              ( {
-                  ret = f.ret;
-                  name = f.name;
-                  params = [];
-                  sampler = (fun [] -> f.sampler vargs);
-                  log_pmdf = (fun [] -> f.log_pmdf vargs);
-                },
-                [] ))
-    | If_pred (p, de) -> (
-        let p = peval_pred p and de = peval de in
-        match p with (* TODO: *) _ -> If_pred (p, de))
-    | If_just de -> If_just (peval de)
-  in
-
-  { ty; exp }
+ fun ({ ty; exp } as texp) ->
+  match exp with
+  | Value _ | Rvar _ -> texp
+  | Bop (bop, te1, te2, ms) -> (
+      match (peval te1, peval te2, ms) with
+      | { exp = Value v1; _ }, { exp = Value v2; _ }, Both_val _ ->
+          { ty; exp = Value (bop.op v1 v2) }
+      | te1, te2, ms -> { ty; exp = Bop (bop, te1, te2, ms) })
+  | Uop (uop, te) -> (
+      match peval te with
+      | { exp = Value v; _ } -> { ty; exp = Value (uop.op v) }
+      | e -> { ty; exp = Uop (uop, e) })
+  | If_pred (pred, te_con, te_alt) -> (
+      match peval_pred pred with
+      | True -> peval { ty; exp = If_just te_con }
+      | False -> peval { ty; exp = If_just te_alt }
+      | p -> { ty; exp = If_pred (p, peval te_con, peval te_alt) })
+  | Call (f, args) -> (
+      match peval_args args with
+      | args, None -> { ty; exp = Call (f, args) }
+      | _, Some vargs ->
+          (* All arguments are fully evaluated;
+             Go ahead and fully evaluate the (primitive) call.
+             It is a primitive call as this is a deterministic expression. *)
+          let f_dist =
+            {
+              ret = f.ret;
+              name = f.name;
+              params = [];
+              sampler = (fun [] -> f.sampler vargs);
+              log_pmdf = (fun [] -> f.log_pmdf vargs);
+            }
+          in
+          { ty; exp = Call (f_dist, []) })
+  | If_pred_dist (p, de) -> (
+      match peval_pred p with
+      | True -> peval de
+      | False -> { ty; exp = Call (Dist.one (dty_of_dist_ty ty), []) }
+      | p -> { ty; exp = If_pred_dist (p, peval de) })
+  | If_just de -> { ty; exp = If_just (peval de) }
 
 and peval_args : type a. (a, det) args -> (a, det) args * a vargs option =
   function
@@ -86,13 +81,11 @@ and peval_pred : pred -> pred = function
 let ( &&& ) p de = peval_pred (And (p, de))
 let ( &&! ) p de = peval_pred (And_not (p, de))
 
-let rec score : type a. (a, det) texp -> (a, det) texp = function
-  (* TODO: consider other cases *)
-  | { ty; exp = If (e_pred, e_con, e_alt) } ->
-      let s_con = score e_con and s_alt = score e_alt in
-      { ty; exp = If (e_pred, s_con, s_alt) }
+let rec score : type a. (a dist_ty, det) texp -> (a dist_ty, det) texp =
+  function
+  | { exp = If_pred_dist (p, de); _ } ->
+      { ty = de.ty; exp = If_pred_dist (p, score de) }
   | { exp = Call _; _ } as e -> e
-  | _ -> raise Score_invalid_arguments
 
 let rec compile :
     type a s. env:env -> ?pred:pred -> (a, ndet) texp -> Graph.t * (a, det) texp
@@ -105,24 +98,21 @@ let rec compile :
       match eq_tys tyx ty with
       | Some Refl -> (Graph.empty, { ty; exp })
       | None -> failwith "[Bug] Type mismatch")
-  | Bop (op, e1, e2) ->
+  | Bop (op, e1, e2, ms) ->
       let g1, te1 = compile ~env ~pred e1 in
       let g2, te2 = compile ~env ~pred e2 in
-      Graph.(g1 @| g2, { ty; exp = Bop (op, te1, te2) })
+      Graph.(g1 @| g2, peval { ty; exp = Bop (op, te1, te2, ms) })
   | Uop (op, e) ->
       let g, te = compile ~env ~pred e in
-      (g, { ty; exp = Uop (op, te) })
-  | If (e_pred, e_con, e_alt) -> (
+      (g, peval { ty; exp = Uop (op, te) })
+  | If (e_pred, e_con, e_alt, _, _) ->
       let g1, de_pred = compile ~env ~pred e_pred in
       let pred_con = pred &&& de_pred in
       let pred_alt = pred &&! de_pred in
       let g2, de_con = compile ~env ~pred:pred_con e_con in
       let g3, de_alt = compile ~env ~pred:pred_alt e_alt in
       let g = Graph.(g1 @| g2 @| g3) in
-      match pred_con with
-      | True -> (g, { ty; exp = If_just de_con })
-      | False -> (g, { ty; exp = If_just de_alt })
-      | _ -> (g, { ty; exp = If (de_pred, de_con, de_alt) }))
+      (g, peval { ty; exp = If_pred (pred_con, de_con, de_alt) })
   | Let (x, e, body) ->
       let g1, det_exp1 = compile ~env ~pred e in
       let g2, det_exp2 =
@@ -146,13 +136,13 @@ let rec compile :
             obs_map = Id.Map.empty;
           }
       in
-      Graph.(g @| g', { ty; exp = Var v })
+      Graph.(g @| g', { ty; exp = Rvar v })
   | Observe (e1, e2) ->
       let g1, de1 = compile ~env ~pred e1 in
       let g2, de2 = compile ~env ~pred e2 in
       let v = gen_vertex () in
       let f1 = score de1 in
-      let f = { ty = f1.ty; exp = If_pred (pred, f1) } in
+      let f = { ty = f1.ty; exp = If_pred_dist (pred, f1) } in
       let fvs = Id.(fv de1.exp @| fv_pred pred) in
       if not (Set.is_empty (fv de2.exp)) then
         failwith "[Bug] Not closed observation";

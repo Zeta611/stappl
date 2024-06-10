@@ -9,7 +9,7 @@ let difficult = sample(bernoulli(0.4)) in
 let smart = sample(bernoulli(0.3)) in
 let grade = bernoulli(determine_grade(difficult, smart)) in
 let sat = bernoulli(
-  if smart then 0.95
+  if smart then 0.94 +. 0.01
     else 0.2
 ) in
 observe(grade, false);

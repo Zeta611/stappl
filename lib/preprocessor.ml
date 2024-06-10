@@ -9,9 +9,8 @@ exception Unbound_variable of string
 let gen_args =
   let cnt = ref 0 in
   fun () ->
-    let arg = "$arg" ^ string_of_int !cnt in
     incr cnt;
-    arg
+    [%string "$arg%{!cnt#Int}"]
 
 let rec subst (env : subst_map) : exp -> exp =
   (* 𝜂-expansion required to avoid infinite recursion *)

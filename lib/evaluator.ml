@@ -15,31 +15,26 @@ let rec eval_dat : type a s. Ctx.t -> ((a, s) dat_ty, det) texp -> a =
  fun ctx { ty; exp } ->
   match exp with
   | Value v -> v
-  | Var x -> (
+  | Rvar x -> (
       let (Ex (tv, v)) = Ctx.find_exn ctx x in
       match eq_dtys (dty_of_dat_ty ty) tv with
       | Some Refl -> v
       | None -> assert false)
-  | Bop ({ op; _ }, te1, te2) -> op (eval_dat ctx te1) (eval_dat ctx te2)
+  | Bop ({ op; _ }, te1, te2, _) -> op (eval_dat ctx te1) (eval_dat ctx te2)
   | Uop ({ op; _ }, te) -> op (eval_dat ctx te)
-  | If (te_pred, te_cons, te_alt) ->
-      if eval_dat ctx te_pred then eval_dat ctx te_cons else eval_dat ctx te_alt
+  | If_pred (pred, te_con, te_alt) ->
+      if eval_pred ctx pred then eval_dat ctx te_con else eval_dat ctx te_alt
   | If_just te -> eval_dat ctx te
 
 and eval_dist : type a. Ctx.t -> (a dist_ty, det) texp -> a =
  fun ctx { ty = Dist_ty dty as ty; exp } ->
   match exp with
   | Call (f, args) -> f.sampler (eval_args ctx args)
-  | Var x -> (
-      let (Ex (tv, v)) = Ctx.find_exn ctx x in
-      match eq_dtys dty tv with Some Refl -> v | None -> assert false)
-  | If_pred (pred, dist) ->
+  | If_pred_dist (pred, dist) ->
       if eval_pred ctx pred then eval_dist ctx dist
       else eval_dist ctx { ty; exp = Call (Dist.one dty, []) }
 
-and eval_pred (ctx : Ctx.t) : pred -> bool =
-  (*print_endline "[eval_pred]";*)
-  function
+and eval_pred (ctx : Ctx.t) : pred -> bool = function
   | Empty | True -> true
   | False -> false
   | And (p, de) -> eval_dat ctx de && eval_pred ctx p
@@ -55,7 +50,7 @@ let rec eval_pmdf :
     type a. Ctx.t -> (a dist_ty, det) texp -> (some_val -> real) * some_val =
  fun ctx { ty = Dist_ty dty as ty; exp } ->
   match exp with
-  | If_pred (pred, te) ->
+  | If_pred_dist (pred, te) ->
       if eval_pred ctx pred then eval_pmdf ctx te
       else eval_pmdf ctx { ty; exp = Call (Dist.one dty, []) }
   | Call (f, args) ->
@@ -65,7 +60,6 @@ let rec eval_pmdf :
         | _ -> assert false
       in
       (pmdf, Ex (dty, eval_dist ctx { ty; exp }))
-  | _ -> (* not reachable *) assert false
 
 let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (Ex query : query) :
     float array =
@@ -98,7 +92,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (Ex query : query) :
         let curr = Ctx.find_exn ctx name in
         let log_pmdf, cand = eval_pmdf ctx exp in
 
-        (* metropolis-hastings update logic *)
+        (* Metropolis-Hastings update logic *)
         Ctx.set ctx ~name ~value:cand;
         let log_pmdf', _ = eval_pmdf ctx exp in
         let log_alpha = log_pmdf' curr -. log_pmdf cand in
