@@ -10,8 +10,6 @@ let gen_vertex =
     incr cnt;
     [%string "X%{!cnt#Int}"]
 
-exception Score_invalid_arguments
-
 let rec peval : type a. (a, det) texp -> (a, det) texp =
  fun ({ ty; exp } as texp) ->
   match exp with
