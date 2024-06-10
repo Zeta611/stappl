@@ -22,8 +22,8 @@ let rec eval_dat : type a s. Ctx.t -> ((a, s) dat_ty, det) texp -> a =
       | None -> assert false)
   | Bop ({ op; _ }, te1, te2, _) -> op (eval_dat ctx te1) (eval_dat ctx te2)
   | Uop ({ op; _ }, te) -> op (eval_dat ctx te)
-  | If_pred (pred, te_con, te_alt) ->
-      if eval_pred ctx pred then eval_dat ctx te_con else eval_dat ctx te_alt
+  | If_pred (te_pred, te_con, te_alt) ->
+      if eval_dat ctx te_pred then eval_dat ctx te_con else eval_dat ctx te_alt
   | If_just te -> eval_dat ctx te
 
 and eval_dist : type a. Ctx.t -> (a dist_ty, det) texp -> a =
@@ -31,14 +31,8 @@ and eval_dist : type a. Ctx.t -> (a dist_ty, det) texp -> a =
   match exp with
   | Call (f, args) -> f.sampler (eval_args ctx args)
   | If_pred_dist (pred, dist) ->
-      if eval_pred ctx pred then eval_dist ctx dist
+      if eval_dat ctx pred then eval_dist ctx dist
       else eval_dist ctx { ty; exp = Call (Dist.one dty, []) }
-
-and eval_pred (ctx : Ctx.t) : pred -> bool = function
-  | Empty | True -> true
-  | False -> false
-  | And (p, de) -> eval_dat ctx de && eval_pred ctx p
-  | And_not (p, de) -> (not (eval_dat ctx de)) && eval_pred ctx p
 
 and eval_args : type a. Ctx.t -> (a, det) args -> a vargs =
  fun ctx -> function
@@ -51,7 +45,7 @@ let rec eval_pmdf :
  fun ctx { ty = Dist_ty dty as ty; exp } ->
   match exp with
   | If_pred_dist (pred, te) ->
-      if eval_pred ctx pred then eval_pmdf ctx te
+      if eval_dat ctx pred then eval_pmdf ctx te
       else eval_pmdf ctx { ty; exp = Call (Dist.one dty, []) }
   | Call (f, args) ->
       let pmdf (Ex (ty', v) : some_val) =

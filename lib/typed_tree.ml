@@ -40,17 +40,9 @@ type ('a, 'b) dist = {
   log_pmdf : 'b vargs -> 'a -> real;
 }
 
-(* TODO: Why args should also be det? *)
 type (_, _) args =
   | [] : (unit, _) args
   | ( :: ) : (('a, _) dat_ty, 'd) texp * ('b, 'd) args -> ('a * 'b, 'd) args
-
-and pred =
-  | Empty : pred
-  | True : pred
-  | False : pred
-  | And : pred * ((bool, _) dat_ty, det) texp -> pred
-  | And_not : pred * ((bool, _) dat_ty, det) texp -> pred
 
 and ('a, 'd) texp = { ty : 'a ty; exp : ('a, 'd) exp }
 
@@ -73,9 +65,13 @@ and (_, _) exp =
       * ('s_pred, 's_ca, 's) merge_stamp
       -> (('a, 's) dat_ty, ndet) exp
   | If_pred :
-      pred * (('a, _) dat_ty, det) texp * (('a, _) dat_ty, det) texp
+      ((bool, _) dat_ty, det) texp
+      * (('a, _) dat_ty, det) texp
+      * (('a, _) dat_ty, det) texp
       -> (('a, _) dat_ty, det) exp
-  | If_pred_dist : pred * ('a dist_ty, det) texp -> ('a dist_ty, det) exp
+  | If_pred_dist :
+      ((bool, _) dat_ty, det) texp * ('a dist_ty, det) texp
+      -> ('a dist_ty, det) exp
   | If_just : (('a, _) dat_ty, det) texp -> (('a, _) dat_ty, det) exp
   | Let : Id.t * ('a, ndet) texp * ('b, ndet) texp -> ('b, ndet) exp
   | Call : ('a, 'b) dist * ('b, 'd) args -> ('a dist_ty, 'd) exp
@@ -91,6 +87,9 @@ type _ some_texp = Ex : (_, 'd) texp -> 'd some_texp
 
 type _ some_dat_ndet_texp =
   | Ex : (('a, _) dat_ty, ndet) texp -> 'a some_dat_ndet_texp
+
+type _ some_dat_det_texp =
+  | Ex : (('a, _) dat_ty, det) texp -> 'a some_dat_det_texp
 
 type _ some_val_texp = Ex : ((_, value) dat_ty, 'd) texp -> 'd some_val_texp
 type _ some_rv_texp = Ex : ((_, rv) dat_ty, 'd) texp -> 'd some_rv_texp
@@ -184,20 +183,16 @@ let rec fv : type a. (a, det) exp -> Id.Set.t = function
   | Rvar x -> Id.Set.singleton x
   | Bop (_, { exp = e1; _ }, { exp = e2; _ }, _) -> Id.(fv e1 @| fv e2)
   | Uop (_, { exp; _ }) -> fv exp
-  | If_pred (pred, { exp = e_con; _ }, { exp = e_alt; _ }) ->
-      Id.(fv_pred pred @| fv e_con @| fv e_alt)
-  | If_pred_dist (pred, { exp = e_con; _ }) -> Id.(fv_pred pred @| fv e_con)
+  | If_pred ({ exp = e_pred; _ }, { exp = e_con; _ }, { exp = e_alt; _ }) ->
+      Id.(fv e_pred @| fv e_con @| fv e_alt)
+  | If_pred_dist ({ exp = e_pred; _ }, { exp = e_con; _ }) ->
+      Id.(fv e_pred @| fv e_con)
   | If_just { exp; _ } -> fv exp
   | Call (_, args) -> fv_args args
 
 and fv_args : type a. (a, det) args -> Id.Set.t = function
   | [] -> Id.Set.empty
   | { exp; _ } :: es -> Id.(fv exp @| fv_args es)
-
-and fv_pred : pred -> Id.Set.t = function
-  | Empty | True | False -> Id.Set.empty
-  | And (p, { exp = de; _ }) -> Id.(fv de @| fv_pred p)
-  | And_not (p, { exp = de; _ }) -> Id.(fv de @| fv_pred p)
 
 module Erased = struct
   type exp =
@@ -220,8 +215,8 @@ module Erased = struct
    fun { ty; exp } ->
     match exp with
     | If (pred, con, alt, _, _) -> If (of_exp pred, of_exp con, of_exp alt)
-    | If_pred (pred, con, alt) -> If (of_pred pred, of_exp con, of_exp alt)
-    | If_pred_dist (pred, con) -> If (of_pred pred, of_exp con, Value "1")
+    | If_pred (pred, con, alt) -> If (of_exp pred, of_exp con, of_exp alt)
+    | If_pred_dist (pred, con) -> If (of_exp pred, of_exp con, Value "1")
     | If_just exp -> If_just (of_exp exp)
     | Value v -> (
         match ty with
@@ -240,12 +235,6 @@ module Erased = struct
   and of_args : type a d. (a, d) args -> exp list = function
     | [] -> []
     | arg :: args -> of_exp arg :: of_args args
-
-  and of_pred : pred -> exp = function
-    | Empty | True -> Value "true"
-    | False -> Value "false"
-    | And (pred, exp) -> Bop ("&&", of_pred pred, of_exp exp)
-    | And_not (pred, exp) -> Bop ("&&", of_pred pred, Uop ("not", of_exp exp))
 
   let of_rv (Ex rv : _ some_rv_texp) = rv |> of_exp
 end

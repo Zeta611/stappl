@@ -25,10 +25,10 @@ let rec peval : type a. (a, det) texp -> (a, det) texp =
       match peval te with
       | { exp = Value v; _ } -> { ty; exp = Value (uop.op v) }
       | e -> { ty; exp = Uop (uop, e) })
-  | If_pred (pred, te_con, te_alt) -> (
-      match peval_pred pred with
-      | True -> peval { ty; exp = If_just te_con }
-      | False -> peval { ty; exp = If_just te_alt }
+  | If_pred (te_pred, te_con, te_alt) -> (
+      match peval te_pred with
+      | { exp = Value true; _ } -> peval { ty; exp = If_just te_con }
+      | { exp = Value false; _ } -> peval { ty; exp = If_just te_alt }
       | p -> { ty; exp = If_pred (p, peval te_con, peval te_alt) })
   | Call (f, args) -> (
       match peval_args args with
@@ -48,9 +48,10 @@ let rec peval : type a. (a, det) texp -> (a, det) texp =
           in
           { ty; exp = Call (f_dist, []) })
   | If_pred_dist (p, de) -> (
-      match peval_pred p with
-      | True -> peval de
-      | False -> { ty; exp = Call (Dist.one (dty_of_dist_ty ty), []) }
+      match peval p with
+      | { exp = Value true; _ } -> peval de
+      | { exp = Value false; _ } ->
+          { ty; exp = Call (Dist.one (dty_of_dist_ty ty), []) }
       | p -> { ty; exp = If_pred_dist (p, peval de) })
   | If_just de -> { ty; exp = If_just (peval de) }
 
@@ -63,23 +64,18 @@ and peval_args : type a. (a, det) args -> (a, det) args * a vargs option =
           ({ ty; exp = Value v } :: tl, Some ((dty_of_dat_ty ty, v) :: vargs))
       | te, (tl, _) -> (te :: tl, None))
 
-and peval_pred : pred -> pred = function
-  | Empty -> failwith "[Bug] Empty predicate"
-  | True -> True
-  | False -> False
-  | And (p, de) -> (
-      match peval de with
-      | { exp = Value true; _ } -> peval_pred p
-      | { exp = Value false; _ } -> False
-      | de -> And (p, de))
-  | And_not (p, de) -> (
-      match peval de with
-      | { exp = Value true; _ } -> False
-      | { exp = Value false; _ } -> peval_pred p
-      | de -> And_not (p, de))
+let ( &&& ) p1 p2 : bool some_dat_det_texp =
+  let { ty = Dat_ty (Tyb, s1); _ } = p1 and { ty = Dat_ty (Tyb, s2); _ } = p2 in
+  let (Ex (ms, s)) = merge_stamps s1 s2 in
+  Ex
+    (peval
+       {
+         ty = Dat_ty (Tyb, s);
+         exp = Bop ({ name = "&&"; op = ( && ) }, p1, p2, ms);
+       })
 
-let ( &&& ) p de = peval_pred (And (p, de))
-let ( &&! ) p de = peval_pred (And_not (p, de))
+let ( &&! ) p1 p2 =
+  p1 &&& { ty = p2.ty; exp = Uop ({ name = "not"; op = not }, p2) }
 
 let rec score : type a. (a dist_ty, det) texp -> (a dist_ty, det) texp =
   function
@@ -88,9 +84,12 @@ let rec score : type a. (a dist_ty, det) texp -> (a dist_ty, det) texp =
   | { exp = Call _; _ } as e -> e
 
 let rec compile :
-    type a s. env:env -> ?pred:pred -> (a, ndet) texp -> Graph.t * (a, det) texp
-    =
- fun ~env ?(pred = Empty) { ty; exp } ->
+    type a s.
+    env:env ->
+    pred:((bool, s) dat_ty, det) texp ->
+    (a, ndet) texp ->
+    Graph.t * (a, det) texp =
+ fun ~env ~pred { ty; exp } ->
   match exp with
   | Value _ as exp -> (Graph.empty, { ty; exp })
   | Var x -> (
@@ -107,8 +106,8 @@ let rec compile :
       (g, peval { ty; exp = Uop (op, te) })
   | If (e_pred, e_con, e_alt, _, _) ->
       let g1, de_pred = compile ~env ~pred e_pred in
-      let pred_con = pred &&& de_pred in
-      let pred_alt = pred &&! de_pred in
+      let (Ex pred_con) = pred &&& de_pred in
+      let (Ex pred_alt) = pred &&! de_pred in
       let g2, de_con = compile ~env ~pred:pred_con e_con in
       let g3, de_alt = compile ~env ~pred:pred_alt e_alt in
       let g = Graph.(g1 @| g2 @| g3) in
@@ -143,7 +142,7 @@ let rec compile :
       let v = gen_vertex () in
       let f1 = score de1 in
       let f = { ty = f1.ty; exp = If_pred_dist (pred, f1) } in
-      let fvs = Id.(fv de1.exp @| fv_pred pred) in
+      let fvs = Id.(fv de1.exp @| fv pred.exp) in
       if not (Set.is_empty (fv de2.exp)) then
         failwith "[Bug] Not closed observation";
       let g' =
@@ -158,7 +157,11 @@ let rec compile :
       Graph.(g1 @| g2 @| g', { ty = Dat_ty (Tyu, Val); exp = Value () })
 
 and compile_args :
-    type a. env -> pred -> (a, ndet) args -> Graph.t * (a, det) args =
+    type a s.
+    env ->
+    ((bool, s) dat_ty, det) texp ->
+    (a, ndet) args ->
+    Graph.t * (a, det) args =
  fun env pred args ->
   match args with
   | [] -> (Graph.empty, [])
@@ -177,7 +180,11 @@ let compile_program (prog : program) : Graph.t * Evaluator.query =
       m "Inlined program %a" Sexp.pp_hum [%sexp (exp : Parse_tree.exp)]);
 
   let (Ex e) = Typing.check exp in
-  let g, { ty; exp } = compile ~env:Id.Map.empty e in
+  let g, { ty; exp } =
+    compile ~env:Id.Map.empty
+      ~pred:{ ty = Dat_ty (Tyb, Val); exp = Value true }
+      e
+  in
   match ty with
   | Dat_ty (_, Rv) -> (g, Ex { ty; exp })
   | _ -> raise Query_not_found
