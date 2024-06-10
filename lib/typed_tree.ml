@@ -242,8 +242,7 @@ module Erased = struct
     | arg :: args -> of_exp arg :: of_args args
 
   and of_pred : pred -> exp = function
-    | Empty -> Value ""
-    | True -> Value "true"
+    | Empty | True -> Value "true"
     | False -> Value "false"
     | And (pred, exp) -> Bop ("&&", of_pred pred, of_exp exp)
     | And_not (pred, exp) -> Bop ("&&", of_pred pred, Uop ("not", of_exp exp))
