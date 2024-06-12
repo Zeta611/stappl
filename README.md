@@ -18,6 +18,13 @@ dune exec -- stappl <program.stp>
 
 This will parse and compile the program, perform inference, and save the distribution plot of the final query variable as a PNG image file.
 
+You will also need a working Python environment with [`numpy`](https://numpy.org/) and [`seaborn`](https://seaborn.pydata.org/) (and their dependencies), as `seaborn` is used to create the plot.
+It is recommend to create a Python virtual environment (optional), and then install `numpy` and `seaborn` inside the environment using pip:
+
+```sh
+pip install -U numpy seabron
+```
+
 ## Example
 
 Here's an example program and its components:
