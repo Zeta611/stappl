@@ -1,6 +1,6 @@
 (library
  (name stappl)
- (libraries core owl owl-plplot string_dict logs)
+ (libraries core owl pyml string_dict logs)
  (inline_tests)
  (preprocess
   (pps ppx_jane)))

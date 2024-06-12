@@ -56,7 +56,7 @@ let rec eval_pmdf :
       (pmdf, Ex (dty, eval_dist ctx { ty; exp }))
 
 let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (Ex query : query) :
-    float array =
+    floatarray =
   (* Initialize the context with the observed values. Float conversion must
      succeed as observed variables do not contain free variables *)
   let default : type a. a dty -> a = function
@@ -79,7 +79,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (Ex query : query) :
   (* Adapted from gibbs_sampling of Owl *)
   let a, b = (1000, 10) in
   let num_iter = a + (b * num_samples) in
-  let samples = Array.create ~len:num_samples 0. in
+  let samples = Stdlib.Float.Array.init num_samples (fun _ -> 0.) in
   for i = 0 to num_iter - 1 do
     (* Gibbs step *)
     List.iter unobserved ~f:(fun (name, Ex exp) ->
@@ -122,7 +122,7 @@ let gibbs_sampling ~(num_samples : int) (graph : Graph.t) (Ex query : query) :
         | Tyi, i -> float_of_int i
         | Tyr, r -> r
       in
-      samples.((i - a) / b) <- query
+      Stdlib.Float.Array.set samples ((i - a) / b) query
   done;
 
   samples
@@ -134,11 +134,8 @@ let infer ?(filename : string = "out") ?(num_samples : int = 100_000)
   let filename = String.chop_suffix_if_exists filename ~suffix:".stp" in
   let plot_path = filename ^ ".png" in
 
-  let open Owl_plplot in
-  let h = Plot.create plot_path in
-  Plot.set_title h
-    Typed_tree.Erased.([%sexp (of_rv query : exp)] |> Sexp.to_string);
-  let mat = Owl.Mat.of_array samples 1 num_samples in
-  Plot.histogram ~h ~bin:50 mat;
-  Plot.output h;
+  Plot.draw ~plot_path
+    ~title:Typed_tree.Erased.([%sexp (of_rv query : exp)] |> Sexp.to_string)
+    ~samples ~num_samples;
+
   plot_path
