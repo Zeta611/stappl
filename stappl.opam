@@ -39,5 +39,4 @@ dev-repo: "git+https://github.com/shapespeare/stappl.git"
 pin-depends: [
   [ "owl.1.1" "git+https://github.com/owlbarn/owl#06943b0267e7e80dd0eba94ebf63ca4d25c71910" ]
   [ "pyml.20231101" "git+https://github.com/Zeta611/pyml#d62a7b9c2e3a856121c9cc850d71a11b00243b0c" ]
-  [ "stdcompat.19" "git+https://github.com/thierry-martinez/stdcompat#d53390d788027fe0a2282c4745eb3d1626341f99" ]
 ]
